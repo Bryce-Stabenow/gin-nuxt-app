@@ -1,16 +1,23 @@
 <template>
-  <div class="dashboard-page">
-    <div class="container">
-      <h1>Dashboard</h1>
-      <div v-if="isLoading" class="loading">
+  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-20">
+    <div class="bg-white rounded-xl shadow-2xl p-10 w-full max-w-2xl">
+      <h1 class="text-3xl font-bold text-gray-900 mb-8 text-center">Dashboard</h1>
+      <div v-if="isLoading" class="text-center text-gray-600 text-base py-5">
         Loading...
       </div>
-      <div v-else-if="isAuthenticated && user" class="content">
-        <p class="welcome-text">Currently, <strong>{{ user.email }}</strong> is the email address of the user.</p>
+      <div v-else-if="isAuthenticated && user" class="mt-5">
+        <p class="text-gray-900 text-lg leading-relaxed text-center">
+          Currently, <strong class="text-purple-600 font-semibold">{{ user.email }}</strong> is the email address of the user.
+        </p>
       </div>
-      <div v-else class="error">
-        <p>You are not authenticated. Please sign in.</p>
-        <NuxtLink to="/signin" class="link-button">Sign In</NuxtLink>
+      <div v-else class="text-center text-red-800 py-5">
+        <p class="mb-5 text-base">You are not authenticated. Please sign in.</p>
+        <NuxtLink
+          to="/signin"
+          class="inline-block px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-lg font-semibold no-underline transition-transform hover:-translate-y-0.5 hover:shadow-lg"
+        >
+          Sign In
+        </NuxtLink>
       </div>
     </div>
   </div>
@@ -24,88 +31,4 @@ onMounted(async () => {
   await checkAuth()
 })
 </script>
-
-<style scoped>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-.dashboard-page {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  padding: 40px;
-  width: 100%;
-  max-width: 600px;
-}
-
-h1 {
-  color: #333;
-  margin-bottom: 30px;
-  font-size: 32px;
-  text-align: center;
-}
-
-.content {
-  margin-top: 20px;
-}
-
-.welcome-text {
-  color: #333;
-  font-size: 18px;
-  line-height: 1.6;
-  text-align: center;
-}
-
-.welcome-text strong {
-  color: #667eea;
-  font-weight: 600;
-}
-
-.loading {
-  text-align: center;
-  color: #666;
-  font-size: 16px;
-  padding: 20px;
-}
-
-.error {
-  text-align: center;
-  color: #721c24;
-  padding: 20px;
-}
-
-.error p {
-  margin-bottom: 20px;
-  font-size: 16px;
-}
-
-.link-button {
-  display: inline-block;
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  text-decoration: none;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.link-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-}
-</style>
 
