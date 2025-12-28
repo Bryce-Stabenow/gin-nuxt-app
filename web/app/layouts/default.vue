@@ -37,11 +37,11 @@
 </template>
 
 <script setup lang="ts">
-const { isAuthenticated, clearAuth } = useAuth()
+const { isAuthenticated, logout } = useAuth()
 
 const handleSignOut = async () => {
-  // Clear auth state
-  clearAuth()
+  // Call logout API endpoint to clear server-side cookie
+  await logout()
   
   // Navigate to home page
   await navigateTo('/')

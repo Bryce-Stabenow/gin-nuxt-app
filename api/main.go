@@ -68,6 +68,7 @@ func main() {
 	protected.Use(middleware.JWTAuthMiddleware())
 	{
 		protected.GET("/me", handlers.HandleGetMe)
+		protected.POST("/logout", handlers.HandleLogout)
 	}
 
 	// Get port from environment or default to 8080

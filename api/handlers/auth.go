@@ -174,6 +174,14 @@ func HandleGetMe(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+// HandleLogout handles user logout by clearing the JWT cookie
+func HandleLogout(c *gin.Context) {
+	// Clear the JWT cookie by setting it with an expired expiration time
+	c.SetCookie("jwt_token", "", -1, "/", "", false, true)
+	
+	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}
+
 // generateToken creates a JWT token for the given user ID
 func generateToken(userID string) (string, error) {
 	// Token expires in 24 hours

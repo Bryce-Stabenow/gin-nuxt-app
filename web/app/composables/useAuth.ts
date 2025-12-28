@@ -71,6 +71,35 @@ export const useAuth = () => {
   }
 
   /**
+   * Logout user by calling the API endpoint
+   */
+  const logout = async (): Promise<void> => {
+    isLoading.value = true
+
+    try {
+      // On server side, we need to forward cookies from the request
+      const headers: Record<string, string> = {}
+      if (process.server) {
+        const requestHeaders = useRequestHeaders(['cookie'])
+        if (requestHeaders.cookie) {
+          headers.cookie = requestHeaders.cookie
+        }
+      }
+
+      await $fetch(`${apiUrl}/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        retry: false
+      })
+    } catch (error) {
+    } finally {
+      clearAuth()
+      isLoading.value = false
+    }
+  }
+
+  /**
    * Refresh authentication state (force check)
    */
   const refreshAuth = async (): Promise<boolean> => {
@@ -83,7 +112,8 @@ export const useAuth = () => {
     isLoading: readonly(isLoading),
     checkAuth,
     clearAuth,
-    refreshAuth
+    refreshAuth,
+    logout
   }
 }
 
