@@ -70,8 +70,8 @@ const handleSubmit = async () => {
     // Refresh auth state to update the flag
     await refreshAuth()
     
-    // Redirect to homepage after successful signup
-    await navigateTo('/')
+    // Redirect to dashboard after successful signup
+    await navigateTo('/dashboard')
   } catch (error: any) {
     messageType.value = 'error'
     message.value = 'Error: ' + (error.data?.error || error.message || 'Something went wrong')

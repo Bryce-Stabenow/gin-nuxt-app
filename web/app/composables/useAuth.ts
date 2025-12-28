@@ -16,15 +16,12 @@ export const useAuth = () => {
    * Uses cache if available and not expired
    */
   const checkAuth = async (force = false): Promise<boolean> => {
-    // Only run on client side
-    if (process.server) {
-      return false
-    }
-
+    // On server side, don't use cache - always check for security
+    // On client side, use cache to avoid repeated calls
     const now = Date.now()
-    const cacheValid = lastCheck.value > 0 && (now - lastCheck.value) < CACHE_DURATION
+    const cacheValid = !process.server && lastCheck.value > 0 && (now - lastCheck.value) < CACHE_DURATION
 
-    // Return cached result if available and not forcing refresh
+    // Return cached result if available and not forcing refresh (client side only)
     if (!force && cacheValid) {
       return isAuthenticated.value
     }
@@ -32,9 +29,19 @@ export const useAuth = () => {
     isLoading.value = true
 
     try {
+      // On server side, we need to forward cookies from the request
+      const headers: Record<string, string> = {}
+      if (process.server) {
+        const requestHeaders = useRequestHeaders(['cookie'])
+        if (requestHeaders.cookie) {
+          headers.cookie = requestHeaders.cookie
+        }
+      }
+
       const userData = await $fetch(`${apiUrl}/me`, {
         method: 'GET',
         credentials: 'include',
+        headers,
         retry: false
       })
 
