@@ -34,6 +34,12 @@ type CreateListRequest struct {
 	Description string `json:"description,omitempty"`
 }
 
+// UpdateListRequest represents the request body for updating a list
+type UpdateListRequest struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
 // ListResponse represents the response for list operations
 type ListResponse struct {
 	ID          string    `json:"id"`

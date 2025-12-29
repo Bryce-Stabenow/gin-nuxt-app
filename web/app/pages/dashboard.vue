@@ -26,6 +26,12 @@
       <div v-if="isAuthenticated && !isLoading" class="bg-white rounded-xl shadow-2xl p-10">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-900">My Lists</h2>
+          <NuxtLink
+            to="/lists/new"
+            class="inline-block px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-lg font-semibold no-underline transition-transform hover:-translate-y-0.5 hover:shadow-lg"
+          >
+            +
+          </NuxtLink>
         </div>
 
         <div v-if="listsLoading" class="text-center text-gray-600 text-base py-5">

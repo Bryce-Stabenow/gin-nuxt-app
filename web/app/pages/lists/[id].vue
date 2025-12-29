@@ -18,13 +18,34 @@
           <!-- Header -->
           <div class="mb-6">
             <div class="flex justify-between items-start mb-4">
-              <div>
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ list.name }}</h1>
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                  <h1 v-if="!isEditingName" class="text-3xl font-bold text-gray-900">{{ list.name }}</h1>
+                  <input
+                    v-else
+                    v-model="editingName"
+                    @blur="saveName"
+                    @keydown.enter="saveName"
+                    @keydown.esc="cancelEditName"
+                    class="text-3xl font-bold text-gray-900 bg-transparent border-b-2 border-purple-500 focus:outline-none focus:border-purple-700 w-full"
+                    ref="nameInput"
+                  />
+                  <button
+                    v-if="!isEditingName"
+                    @click="startEditName"
+                    class="p-1 text-gray-400 hover:text-purple-600 transition-colors"
+                    title="Edit list name"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                </div>
                 <p v-if="list.description" class="text-gray-600 text-base">{{ list.description }}</p>
               </div>
               <NuxtLink
                 to="/dashboard"
-                class="px-4 py-2 text-purple-600 border-2 border-purple-600 rounded-lg font-medium no-underline hover:bg-purple-50 transition-colors"
+                class="px-4 py-2 text-purple-600 border-2 border-purple-600 rounded-lg font-medium no-underline hover:bg-purple-50 transition-colors ml-4"
               >
                 Back
               </NuxtLink>
@@ -97,11 +118,15 @@
 
 <script setup lang="ts">
 const route = useRoute()
-const { getList } = useLists()
+const { getList, updateList } = useLists()
 
 const list = ref<any>(null)
 const isLoading = ref(true)
 const error = ref<string | null>(null)
+const isEditingName = ref(false)
+const editingName = ref('')
+const nameInput = ref<HTMLInputElement | null>(null)
+const isSaving = ref(false)
 
 onMounted(async () => {
   await loadList()
@@ -124,6 +149,50 @@ const loadList = async () => {
     }
   } finally {
     isLoading.value = false
+  }
+}
+
+const startEditName = () => {
+  if (!list.value) return
+  editingName.value = list.value.name
+  isEditingName.value = true
+  nextTick(() => {
+    nameInput.value?.focus()
+    nameInput.value?.select()
+  })
+}
+
+const cancelEditName = () => {
+  isEditingName.value = false
+  editingName.value = ''
+}
+
+const saveName = async () => {
+  if (!list.value || isSaving.value) return
+  
+  const trimmedName = editingName.value.trim()
+  if (!trimmedName) {
+    cancelEditName()
+    return
+  }
+  
+  if (trimmedName === list.value.name) {
+    cancelEditName()
+    return
+  }
+  
+  isSaving.value = true
+  try {
+    const listId = route.params.id as string
+    const updatedList = await updateList(listId, { name: trimmedName })
+    list.value = updatedList
+    isEditingName.value = false
+    editingName.value = ''
+  } catch (err: any) {
+    error.value = err.data?.error || err.message || 'Failed to update list name'
+    // Keep editing mode on error so user can retry
+  } finally {
+    isSaving.value = false
   }
 }
 </script>

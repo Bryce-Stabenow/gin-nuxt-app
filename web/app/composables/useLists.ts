@@ -27,6 +27,11 @@ export const useLists = () => {
     description?: string
   }
 
+  interface UpdateListRequest {
+    name?: string
+    description?: string
+  }
+
   /**
    * Get headers with cookie forwarding for server-side requests
    */
@@ -80,10 +85,23 @@ export const useLists = () => {
     })
   }
 
+  /**
+   * Update a list
+   */
+  const updateList = async (id: string, updates: UpdateListRequest): Promise<List> => {
+    return await $fetch<List>(`${apiUrl}/lists/${id}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: getHeaders(),
+      body: updates,
+    })
+  }
+
   return {
     createList,
     getLists,
     getList,
+    updateList,
   }
 }
 
