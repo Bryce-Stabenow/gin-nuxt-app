@@ -16,10 +16,13 @@
           {{ item.name }}
         </span>
       </div>
-      <div class="text-sm text-gray-500 mt-1">
-        <span v-if="item.quantity > 0"
-          >Quantity: {{ item.quantity }}</span
-        >
+      <div class="text-sm text-gray-500 mt-1 space-y-1">
+        <div v-if="item.quantity > 0">
+          Quantity: {{ item.quantity }}
+        </div>
+        <div v-if="item.details" class="text-gray-600 italic">
+          {{ item.details }}
+        </div>
       </div>
     </div>
     <div
@@ -76,6 +79,7 @@ interface Props {
     name: string;
     checked: boolean;
     quantity: number;
+    details?: string;
   };
   originalIndex: number;
 }

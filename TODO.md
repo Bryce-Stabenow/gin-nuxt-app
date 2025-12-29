@@ -2,5 +2,4 @@
 - Delete lists
 - Reorder Lists
 - Reorder list items
-- Add "details" field to list items
 - Look into adding "added by profile.name" when querying DB

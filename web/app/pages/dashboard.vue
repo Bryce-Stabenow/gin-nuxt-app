@@ -23,7 +23,7 @@
       </div>
 
       <!-- Lists Section -->
-      <div v-if="isAuthenticated && !isLoading" class="bg-white rounded-xl shadow-2xl p-10">
+      <div v-if="isAuthenticated && !isLoading" class="bg-white rounded-xl shadow-2xl py-10 px-4">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-900">My Lists</h2>
           <NuxtLink

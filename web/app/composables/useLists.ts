@@ -6,6 +6,7 @@ export const useLists = () => {
     name: string
     quantity: number
     checked: boolean
+    details?: string
     added_by: string
     added_at: string
   }
@@ -34,6 +35,7 @@ export const useLists = () => {
   interface AddListItemRequest {
     name: string
     quantity?: number
+    details?: string
   }
 
   interface UpdateListItemCheckedRequest {

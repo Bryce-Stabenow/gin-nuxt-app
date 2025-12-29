@@ -3,7 +3,7 @@
     class="min-h-screen bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-10"
   >
     <div class="max-w-4xl mx-auto">
-      <div class="bg-white rounded-xl shadow-2xl p-10">
+      <div class="bg-white rounded-xl shadow-2xl py-10 px-4">
         <div v-if="isLoading" class="text-center text-gray-600 text-base py-10">
           Loading list...
         </div>
@@ -16,50 +16,53 @@
             Back to Dashboard
           </NuxtLink>
         </div>
-        <div v-else-if="list">
+        <div v-else-if="list" class="relative">
           <!-- Header -->
-          <div class="mb-6">
-            <div class="flex justify-between items-start mb-4">
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-2">
-                  <h1
-                    v-if="!isEditingName"
-                    class="text-3xl font-bold text-gray-900"
-                  >
-                    {{ list.name }}
-                  </h1>
-                  <input
-                    v-else
-                    v-model="editingName"
-                    @blur="saveName"
-                    @keydown.enter="saveName"
-                    @keydown.esc="cancelEditName"
-                    class="text-3xl font-bold text-gray-900 bg-transparent border-b-2 border-purple-500 focus:outline-none focus:border-purple-700 w-full"
-                    ref="nameInput"
+          <div class="sticky top-0 bg-white z-10 py-2">
+            <div class="flex items-center gap-2">
+              <h1
+                v-if="!isEditingName"
+                class="text-3xl font-bold text-gray-900"
+              >
+                {{ list.name }}
+              </h1>
+              <input
+                v-else
+                v-model="editingName"
+                @blur="saveName"
+                @keydown.enter="saveName"
+                @keydown.esc="cancelEditName"
+                class="text-3xl font-bold text-gray-900 bg-transparent border-b-2 border-purple-500 focus:outline-none focus:border-purple-700 w-full"
+                ref="nameInput"
+              />
+              <button
+                v-if="!isEditingName"
+                @click="startEditName"
+                class="p-1 text-gray-400 hover:text-purple-600 transition-colors"
+                title="Edit list name"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                   />
-                  <button
-                    v-if="!isEditingName"
-                    @click="startEditName"
-                    class="p-1 text-gray-400 hover:text-purple-600 transition-colors"
-                    title="Edit list name"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
-                  </button>
-                </div>
-                <p v-if="list.description" class="text-gray-600 text-base">
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <div v-if="list.description" class="flex justify-between items-start mb-4">
+              <div class="flex-1">
+                <p class="text-gray-600 text-base">
                   {{ list.description }}
                 </p>
               </div>
@@ -176,7 +179,7 @@ const sortedItems = computed(() => {
   if (!list.value || !list.value.items) {
     return [];
   }
-  
+
   return list.value.items
     .map((item: any, originalIndex: number) => ({
       item,
@@ -332,15 +335,15 @@ const debounceTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
 const toggleItemChecked = (index: number) => {
   if (!list.value || !list.value.items[index]) return;
-  
+
   const currentChecked = list.value.items[index].checked;
   const newChecked = !currentChecked;
-  
+
   // Create a synthetic event to reuse existing handler
   const syntheticEvent = {
-    target: { checked: newChecked }
+    target: { checked: newChecked },
   } as unknown as Event;
-  
+
   handleItemCheckedChange(index, syntheticEvent);
 };
 

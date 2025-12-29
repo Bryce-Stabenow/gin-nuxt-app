@@ -351,6 +351,7 @@ func HandleAddListItem(c *gin.Context) {
 		Name:     req.Name,
 		Quantity: quantity,
 		Checked:  false,
+		Details:  req.Details,
 		AddedBy:  userID,
 		AddedAt:  now,
 	}

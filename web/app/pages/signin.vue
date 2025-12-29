@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen flex items-start justify-center bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-10">
-    <div class="bg-white rounded-xl shadow-2xl p-10 w-full max-w-md">
+  <div class="min-h-screen flex justify-center bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-20">
+    <div class="bg-white rounded-xl shadow-2xl py-10 px-4 w-full max-w-md">
       <h1 class="text-3xl font-bold text-gray-900 mb-2">Sign In</h1>
       <p class="text-gray-600 text-sm mb-8">Welcome back! Please sign in to your account</p>
       <form id="signinForm" @submit.prevent="handleSubmit">

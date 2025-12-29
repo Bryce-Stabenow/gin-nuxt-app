@@ -23,6 +23,7 @@ type ListItem struct {
 	Name     string             `json:"name" bson:"name"`
 	Quantity int                `json:"quantity" bson:"quantity"`
 	Checked  bool               `json:"checked" bson:"checked"`
+	Details  string             `json:"details,omitempty" bson:"details,omitempty"`
 	AddedBy  primitive.ObjectID `json:"added_by" bson:"added_by"`
 	AddedAt  time.Time          `json:"added_at" bson:"added_at"`
 }
@@ -43,6 +44,7 @@ type UpdateListRequest struct {
 type AddListItemRequest struct {
 	Name     string `json:"name" binding:"required"`
 	Quantity int    `json:"quantity"`
+	Details  string `json:"details,omitempty" binding:"max=512"`
 }
 
 // UpdateListItemCheckedRequest represents the request body for updating an item's checked state

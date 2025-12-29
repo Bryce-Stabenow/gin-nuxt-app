@@ -49,6 +49,26 @@
               />
             </div>
 
+            <div>
+              <label
+                for="item-details"
+                class="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Details
+              </label>
+              <textarea
+                id="item-details"
+                v-model="form.details"
+                maxlength="512"
+                rows="3"
+                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                placeholder="Add any additional details (optional)"
+              />
+              <div class="text-xs text-gray-500 mt-1 text-right">
+                {{ (form.details || '').length }}/512
+              </div>
+            </div>
+
             <div v-if="error" class="text-red-600 text-sm">
               {{ error }}
             </div>
@@ -95,6 +115,7 @@ const { addListItem } = useLists()
 const form = ref({
   name: '',
   quantity: 1,
+  details: '',
 })
 
 const error = ref<string | null>(null)
@@ -119,6 +140,7 @@ const handleSubmit = async () => {
     const updatedList = await addListItem(listId, {
       name: form.value.name.trim(),
       quantity: form.value.quantity || 1,
+      details: form.value.details?.trim() || undefined,
     })
     
     emit('item-added', updatedList)
@@ -127,6 +149,7 @@ const handleSubmit = async () => {
     form.value = {
       name: '',
       quantity: 1,
+      details: '',
     }
     close()
   } catch (err: any) {
@@ -147,6 +170,7 @@ watch(() => props.isOpen, (isOpen) => {
     form.value = {
       name: '',
       quantity: 1,
+      details: '',
     }
     error.value = null
   }
