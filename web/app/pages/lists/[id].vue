@@ -96,14 +96,18 @@
                 Click here to get started.
               </p>
             </div>
-            <div v-else class="space-y-3">
+            <div v-else class="space-y-5">
               <div
                 v-for="(sortedItem, displayIndex) in sortedItems"
                 :key="sortedItem.originalIndex"
-                class="flex items-center gap-4 p-4 border-2 border-gray-200 rounded-lg hover:border-purple-300 transition-colors"
-                :class="{ 'bg-gray-50': sortedItem.item.checked }"
+                class="flex items-stretch gap-0 p-0 overflow-hidden rounded-lg"
               >
-                <div class="flex-1">
+                <div 
+                  class="flex-1 p-4 border-2 border-r-0 rounded-l-lg transition-colors"
+                  :class="sortedItem.item.checked 
+                    ? 'border-gray-300 bg-gray-50' 
+                    : 'border-gray-200 hover:border-purple-300'"
+                >
                   <div class="flex items-center gap-2">
                     <span
                       class="font-medium text-gray-900"
@@ -118,12 +122,51 @@
                     >
                   </div>
                 </div>
-                <input
-                  type="checkbox"
-                  :checked="sortedItem.item.checked"
-                  @change="handleItemCheckedChange(sortedItem.originalIndex, $event)"
-                  class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
-                />
+                <div
+                  @click="toggleItemChecked(sortedItem.originalIndex)"
+                  class="w-1/4 flex items-center justify-center cursor-pointer transition-colors border-2 rounded-r-lg"
+                  :class="sortedItem.item.checked 
+                    ? 'bg-green-500 hover:bg-green-600 border-green-600' 
+                    : 'bg-gray-200 hover:bg-gray-300 border-gray-200 hover:border-gray-300'"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="sortedItem.item.checked"
+                    @change="handleItemCheckedChange(sortedItem.originalIndex, $event)"
+                    class="sr-only"
+                    tabindex="-1"
+                  />
+                  <svg
+                    v-if="sortedItem.item.checked"
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-8 w-8 text-green-100"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="3"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <svg
+                    v-else
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-8 w-8 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
               </div>
             </div>
             <div class="flex justify-center pt-6">
@@ -349,6 +392,20 @@ const handleItemAdded = (updatedList: any) => {
 
 // Debounce timer for checkbox updates
 const debounceTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
+const toggleItemChecked = (index: number) => {
+  if (!list.value || !list.value.items[index]) return;
+  
+  const currentChecked = list.value.items[index].checked;
+  const newChecked = !currentChecked;
+  
+  // Create a synthetic event to reuse existing handler
+  const syntheticEvent = {
+    target: { checked: newChecked }
+  } as unknown as Event;
+  
+  handleItemCheckedChange(index, syntheticEvent);
+};
 
 const handleItemCheckedChange = async (index: number, event: Event) => {
   if (!list.value) return;
