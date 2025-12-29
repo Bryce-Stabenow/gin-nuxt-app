@@ -76,6 +76,8 @@ func main() {
 		protected.GET("/lists/:id", handlers.HandleGetList)
 		protected.PUT("/lists/:id", handlers.HandleUpdateList)
 		protected.DELETE("/lists/:id", handlers.HandleDeleteList)
+		protected.POST("/lists/:id/items", handlers.HandleAddListItem)
+		protected.PUT("/lists/:id/items/checked", handlers.HandleUpdateListItemChecked)
 	}
 
 	// Get port from environment or default to 8080

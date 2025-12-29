@@ -5,7 +5,6 @@ export const useLists = () => {
   interface ListItem {
     name: string
     quantity: number
-    unit?: string
     checked: boolean
     added_by: string
     added_at: string
@@ -30,6 +29,16 @@ export const useLists = () => {
   interface UpdateListRequest {
     name?: string
     description?: string
+  }
+
+  interface AddListItemRequest {
+    name: string
+    quantity?: number
+  }
+
+  interface UpdateListItemCheckedRequest {
+    index: number
+    checked: boolean
   }
 
   /**
@@ -97,11 +106,44 @@ export const useLists = () => {
     })
   }
 
+  /**
+   * Add an item to a list
+   */
+  const addListItem = async (listId: string, item: AddListItemRequest): Promise<List> => {
+    return await $fetch<List>(`${apiUrl}/lists/${listId}/items`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: getHeaders(),
+      body: item,
+    })
+  }
+
+  /**
+   * Update an item's checked state
+   */
+  const updateListItemChecked = async (
+    listId: string,
+    itemIndex: number,
+    checked: boolean
+  ): Promise<List> => {
+    return await $fetch<List>(`${apiUrl}/lists/${listId}/items/checked`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: getHeaders(),
+      body: {
+        index: itemIndex,
+        checked,
+      } as UpdateListItemCheckedRequest,
+    })
+  }
+
   return {
     createList,
     getLists,
     getList,
     updateList,
+    addListItem,
+    updateListItemChecked,
   }
 }
 

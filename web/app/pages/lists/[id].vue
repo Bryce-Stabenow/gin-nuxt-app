@@ -78,16 +78,28 @@
 
           <!-- Items Section -->
           <div class="border-t border-gray-200 pt-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">
-              Items ({{ list.items.length }})
-            </h2>
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-semibold text-gray-900">
+                Items ({{ list.items.length }})
+              </h2>
+              <button
+                @click="openAddItemModal"
+                class="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-lg font-medium hover:shadow-lg transition-all"
+              >
+                + Add
+              </button>
+            </div>
             <div
-              v-if="list.items.length === 0"
+              aria-label="Add Item"
+              role="button"
+              tabindex="0"
               class="text-center text-gray-500 py-10 border-2 border-dashed border-gray-200 rounded-lg"
+              @click="openAddItemModal"
+              v-if="list.items.length === 0"
             >
               <p>No items in this list yet.</p>
-              <p class="text-sm mt-2">
-                Items can be added when the update feature is implemented.
+              <p class="text-sm mt-2 text-purple-600">
+                Click here to get started.
               </p>
             </div>
             <div v-else class="space-y-3">
@@ -100,8 +112,8 @@
                 <input
                   type="checkbox"
                   :checked="item.checked"
-                  disabled
-                  class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  @change="handleItemCheckedChange(Number(index), $event)"
+                  class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
                 />
                 <div class="flex-1">
                   <div class="flex items-center gap-2">
@@ -113,17 +125,7 @@
                     </span>
                   </div>
                   <div class="text-sm text-gray-500 mt-1">
-                    <span v-if="item.quantity > 0">{{ item.quantity }}</span>
-                    <span v-if="item.quantity > 0 && item.unit">{{
-                      item.unit
-                    }}</span>
-                    <span v-if="item.quantity > 0 && item.unit" class="mx-1"
-                      >•</span
-                    >
-                    <span
-                      >Added
-                      {{ new Date(item.added_at).toLocaleDateString() }}</span
-                    >
+                    <span v-if="item.quantity > 0">Quantity: {{ item.quantity }}</span>
                   </div>
                 </div>
               </div>
@@ -160,12 +162,19 @@
         </div>
       </div>
     </div>
+
+    <!-- Add Item Modal -->
+    <AddItemModal
+      :is-open="isAddItemModalOpen"
+      @close="closeAddItemModal"
+      @item-added="handleItemAdded"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 const route = useRoute();
-const { getList, updateList } = useLists();
+const { getList, updateList, updateListItemChecked } = useLists();
 
 const list = ref<any>(null);
 const isLoading = ref(true);
@@ -174,6 +183,7 @@ const isEditingName = ref(false);
 const editingName = ref("");
 const nameInput = ref<HTMLInputElement | null>(null);
 const isSaving = ref(false);
+const isAddItemModalOpen = ref(false);
 
 onMounted(async () => {
   await loadList();
@@ -243,4 +253,67 @@ const saveName = async () => {
     isSaving.value = false;
   }
 };
+
+const openAddItemModal = () => {
+  isAddItemModalOpen.value = true;
+};
+
+const closeAddItemModal = () => {
+  isAddItemModalOpen.value = false;
+};
+
+const handleItemAdded = (updatedList: any) => {
+  list.value = updatedList;
+};
+
+// Debounce timer for checkbox updates
+const debounceTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
+const handleItemCheckedChange = async (index: number, event: Event) => {
+  if (!list.value) return;
+
+  const target = event.target as HTMLInputElement;
+  const newChecked = target.checked;
+
+  // Optimistically update the UI
+  if (list.value.items[index]) {
+    list.value.items[index].checked = newChecked;
+  }
+
+  // Clear existing debounce timer for this item
+  const existingTimer = debounceTimers.get(index);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+  }
+
+  // Set new debounce timer
+  const timer = setTimeout(async () => {
+    try {
+      const listId = route.params.id as string;
+      const updatedList = await updateListItemChecked(
+        listId,
+        index,
+        newChecked
+      );
+      // Update with server response to ensure sync
+      list.value = updatedList;
+    } catch (err: any) {
+      // Revert on error
+      if (list.value.items[index]) {
+        list.value.items[index].checked = !newChecked;
+      }
+      console.error("Failed to update item checked state:", err);
+    } finally {
+      debounceTimers.delete(index);
+    }
+  }, 500); // 500ms debounce
+
+  debounceTimers.set(index, timer);
+};
+
+// Cleanup timers on unmount
+onUnmounted(() => {
+  debounceTimers.forEach((timer) => clearTimeout(timer));
+  debounceTimers.clear();
+});
 </script>

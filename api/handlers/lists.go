@@ -275,6 +275,226 @@ func HandleUpdateList(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// HandleAddListItem handles adding an item to a list
+func HandleAddListItem(c *gin.Context) {
+	// Get user ID from context
+	userIDStr, exists := c.Get(middleware.UserIDKey)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
+
+	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
+		return
+	}
+
+	// Get list ID from URL parameter
+	listIDStr := c.Param("id")
+	listID, err := primitive.ObjectIDFromHex(listIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid list ID format"})
+		return
+	}
+
+	// Parse request body
+	var req models.AddListItemRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Set default quantity to 1 if not provided or 0
+	quantity := req.Quantity
+	if quantity <= 0 {
+		quantity = 1
+	}
+
+	// Find list and verify access
+	collection := config.DB.Collection("lists")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var list models.List
+	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&list)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			c.JSON(http.StatusNotFound, gin.H{"error": "List not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find list"})
+		return
+	}
+
+	// Check if user has access (owner or in shared_with)
+	hasAccess := false
+	if list.UserID == userID {
+		hasAccess = true
+	} else {
+		for _, sharedUserID := range list.SharedWith {
+			if sharedUserID == userID {
+				hasAccess = true
+				break
+			}
+		}
+	}
+
+	if !hasAccess {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have access to this list"})
+		return
+	}
+
+	// Create new item
+	now := time.Now()
+	newItem := models.ListItem{
+		Name:     req.Name,
+		Quantity: quantity,
+		Checked:  false,
+		AddedBy:  userID,
+		AddedAt:  now,
+	}
+
+	// Add item to list and update updated_at
+	update := bson.M{
+		"$push": bson.M{"items": newItem},
+		"$set":  bson.M{"updated_at": now},
+	}
+
+	_, err = collection.UpdateOne(
+		ctx,
+		bson.M{"_id": listID},
+		update,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add item to list"})
+		return
+	}
+
+	// Fetch the updated list to return
+	var updatedList models.List
+	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&updatedList)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve updated list"})
+		return
+	}
+
+	// Convert to response format
+	response := listToResponse(&updatedList)
+	c.JSON(http.StatusOK, response)
+}
+
+// HandleUpdateListItemChecked handles updating an item's checked state
+func HandleUpdateListItemChecked(c *gin.Context) {
+	// Get user ID from context
+	userIDStr, exists := c.Get(middleware.UserIDKey)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
+
+	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
+		return
+	}
+
+	// Get list ID from URL parameter
+	listIDStr := c.Param("id")
+	listID, err := primitive.ObjectIDFromHex(listIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid list ID format"})
+		return
+	}
+
+	// Parse request body
+	var req models.UpdateListItemCheckedRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Find list and verify access
+	collection := config.DB.Collection("lists")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var list models.List
+	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&list)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			c.JSON(http.StatusNotFound, gin.H{"error": "List not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find list"})
+		return
+	}
+
+	// Check if user has access (owner or in shared_with)
+	hasAccess := false
+	if list.UserID == userID {
+		hasAccess = true
+	} else {
+		for _, sharedUserID := range list.SharedWith {
+			if sharedUserID == userID {
+				hasAccess = true
+				break
+			}
+		}
+	}
+
+	if !hasAccess {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have access to this list"})
+		return
+	}
+
+	// Validate index
+	if req.Index == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Index is required"})
+		return
+	}
+
+	index := *req.Index
+	if index < 0 || index >= len(list.Items) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item index"})
+		return
+	}
+
+	// Update the item's checked state
+	now := time.Now()
+	
+	// Update the item in the slice
+	list.Items[index].Checked = req.Checked
+
+	// Update the entire items array and updated_at in the database
+	_, err = collection.UpdateOne(
+		ctx,
+		bson.M{"_id": listID},
+		bson.M{
+			"$set": bson.M{
+				"items":      list.Items,
+				"updated_at": now,
+			},
+		},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update item"})
+		return
+	}
+
+	// Fetch the updated list to return
+	var updatedList models.List
+	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&updatedList)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve updated list"})
+		return
+	}
+
+	// Convert to response format
+	response := listToResponse(&updatedList)
+	c.JSON(http.StatusOK, response)
+}
+
 // HandleDeleteList handles deleting a list (stub)
 func HandleDeleteList(c *gin.Context) {
 	c.JSON(http.StatusNotImplemented, gin.H{"error": "Delete list not yet implemented"})

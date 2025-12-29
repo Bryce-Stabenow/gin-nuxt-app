@@ -22,7 +22,6 @@ type List struct {
 type ListItem struct {
 	Name     string             `json:"name" bson:"name"`
 	Quantity int                `json:"quantity" bson:"quantity"`
-	Unit     string             `json:"unit,omitempty" bson:"unit,omitempty"`
 	Checked  bool               `json:"checked" bson:"checked"`
 	AddedBy  primitive.ObjectID `json:"added_by" bson:"added_by"`
 	AddedAt  time.Time          `json:"added_at" bson:"added_at"`
@@ -38,6 +37,18 @@ type CreateListRequest struct {
 type UpdateListRequest struct {
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
+}
+
+// AddListItemRequest represents the request body for adding an item to a list
+type AddListItemRequest struct {
+	Name     string `json:"name" binding:"required"`
+	Quantity int    `json:"quantity"`
+}
+
+// UpdateListItemCheckedRequest represents the request body for updating an item's checked state
+type UpdateListItemCheckedRequest struct {
+	Index   *int `json:"index" binding:"required"`
+	Checked bool `json:"checked"`
 }
 
 // ListResponse represents the response for list operations
