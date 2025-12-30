@@ -1,4 +1,3 @@
-- Delete lists
 - Reorder Lists
 - Reorder list items
-- Look into adding "added by profile.name" when querying DB
+- Share lists with other account via magic link

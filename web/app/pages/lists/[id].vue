@@ -19,7 +19,7 @@
         <div v-else-if="list" class="relative">
           <!-- Header -->
           <div class="sticky top-0 bg-white z-10 py-2">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center justify-between">
               <h1
                 v-if="!isEditingName"
                 class="text-3xl font-bold text-gray-900"
@@ -35,32 +35,140 @@
                 class="text-3xl font-bold text-gray-900 bg-transparent border-b-2 border-purple-500 focus:outline-none focus:border-purple-700 w-full"
                 ref="nameInput"
               />
-              <button
-                v-if="!isEditingName"
-                @click="startEditName"
-                class="p-1 text-gray-400 hover:text-purple-600 transition-colors"
-                title="Edit list name"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+              <div class="flex items-center gap-2">
+                <button
+                  v-if="!isEditingName"
+                  @click="startEditName"
+                  class="p-1 text-gray-400 hover:text-purple-600 transition-colors"
+                  title="Edit list name"
                 >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  v-if="!isEditingName"
+                  @click="handleDeleteList"
+                  :disabled="isDeletingList"
+                  class="p-1 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Delete list"
+                >
+                  <svg
+                    v-if="isDeletingList"
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <circle cx="12" cy="2" r="1.5" opacity="0.3">
+                      <animate
+                        attributeName="opacity"
+                        values="0.3;1;0.3"
+                        dur="1s"
+                        repeatCount="indefinite"
+                        begin="0s"
+                      />
+                    </circle>
+                    <circle cx="19.07" cy="4.93" r="1.5" opacity="0.3">
+                      <animate
+                        attributeName="opacity"
+                        values="0.3;1;0.3"
+                        dur="1s"
+                        repeatCount="indefinite"
+                        begin="0.125s"
+                      />
+                    </circle>
+                    <circle cx="21" cy="12" r="1.5" opacity="0.3">
+                      <animate
+                        attributeName="opacity"
+                        values="0.3;1;0.3"
+                        dur="1s"
+                        repeatCount="indefinite"
+                        begin="0.25s"
+                      />
+                    </circle>
+                    <circle cx="19.07" cy="19.07" r="1.5" opacity="0.3">
+                      <animate
+                        attributeName="opacity"
+                        values="0.3;1;0.3"
+                        dur="1s"
+                        repeatCount="indefinite"
+                        begin="0.375s"
+                      />
+                    </circle>
+                    <circle cx="12" cy="21" r="1.5" opacity="0.3">
+                      <animate
+                        attributeName="opacity"
+                        values="0.3;1;0.3"
+                        dur="1s"
+                        repeatCount="indefinite"
+                        begin="0.5s"
+                      />
+                    </circle>
+                    <circle cx="4.93" cy="19.07" r="1.5" opacity="0.3">
+                      <animate
+                        attributeName="opacity"
+                        values="0.3;1;0.3"
+                        dur="1s"
+                        repeatCount="indefinite"
+                        begin="0.625s"
+                      />
+                    </circle>
+                    <circle cx="2" cy="12" r="1.5" opacity="0.3">
+                      <animate
+                        attributeName="opacity"
+                        values="0.3;1;0.3"
+                        dur="1s"
+                        repeatCount="indefinite"
+                        begin="0.75s"
+                      />
+                    </circle>
+                    <circle cx="4.93" cy="4.93" r="1.5" opacity="0.3">
+                      <animate
+                        attributeName="opacity"
+                        values="0.3;1;0.3"
+                        dur="1s"
+                        repeatCount="indefinite"
+                        begin="0.875s"
+                      />
+                    </circle>
+                  </svg>
+                  <svg
+                    v-else
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                     stroke-width="2"
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-              </button>
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
           <div class="mb-6">
-            <div v-if="list.description" class="flex justify-between items-start mb-4">
+            <div
+              v-if="list.description"
+              class="flex justify-between items-start mb-4"
+            >
               <div class="flex-1">
                 <p class="text-gray-600 text-base">
                   {{ list.description }}
@@ -162,7 +270,10 @@
               />
             </div>
             <!-- Inline Add Item Form -->
-            <div v-if="showAddForm" class="mt-6 p-4 border-2 border-purple-300 rounded-lg bg-purple-50">
+            <div
+              v-if="showAddForm"
+              class="mt-6 p-4 border-2 border-purple-300 rounded-lg bg-purple-50"
+            >
               <form @submit.prevent="handleAddItem" class="space-y-4">
                 <div>
                   <label
@@ -215,7 +326,7 @@
                     placeholder="Add any additional details (optional)"
                   />
                   <div class="text-xs text-gray-500 mt-1 text-right">
-                    {{ (addForm.details || '').length }}/512
+                    {{ (addForm.details || "").length }}/512
                   </div>
                 </div>
 
@@ -298,7 +409,9 @@
 import confetti from "canvas-confetti";
 
 const route = useRoute();
-const { getList, updateList, updateListItemChecked, addListItem } = useLists();
+const router = useRouter();
+const { getList, updateList, updateListItemChecked, addListItem, deleteList } =
+  useLists();
 
 const list = ref<any>(null);
 const isLoading = ref(true);
@@ -318,11 +431,12 @@ const addError = ref<string | null>(null);
 const isSearchOpen = ref(false);
 const searchQuery = ref("");
 const searchInput = ref<HTMLInputElement | null>(null);
+const isDeletingList = ref(false);
 
 const addForm = ref({
-  name: '',
+  name: "",
   quantity: 1,
-  details: '',
+  details: "",
 });
 
 // Computed property to sort items: unchecked items first, checked items at the bottom
@@ -332,11 +446,10 @@ const sortedItems = computed(() => {
     return [];
   }
 
-  let items = list.value.items
-    .map((item: any, originalIndex: number) => ({
-      item,
-      originalIndex,
-    }));
+  let items = list.value.items.map((item: any, originalIndex: number) => ({
+    item,
+    originalIndex,
+  }));
 
   // Filter by search query if search is active
   if (isSearchOpen.value && searchQuery.value.trim()) {
@@ -480,7 +593,7 @@ const saveName = async () => {
 
 const handleAddItem = async () => {
   if (!addForm.value.name.trim()) {
-    addError.value = 'Item name is required';
+    addError.value = "Item name is required";
     return;
   }
 
@@ -494,19 +607,19 @@ const handleAddItem = async () => {
       quantity: addForm.value.quantity || 1,
       details: addForm.value.details?.trim() || undefined,
     });
-    
+
     list.value = updatedList;
     checkAndTriggerConfetti();
-    
+
     // Reset form and hide
     addForm.value = {
-      name: '',
+      name: "",
       quantity: 1,
-      details: '',
+      details: "",
     };
     showAddForm.value = false;
   } catch (err: any) {
-    addError.value = err.data?.error || err.message || 'Failed to add item';
+    addError.value = err.data?.error || err.message || "Failed to add item";
   } finally {
     isAdding.value = false;
   }
@@ -515,9 +628,9 @@ const handleAddItem = async () => {
 const cancelAddForm = () => {
   showAddForm.value = false;
   addForm.value = {
-    name: '',
+    name: "",
     quantity: 1,
-    details: '',
+    details: "",
   };
   addError.value = null;
 };
@@ -629,6 +742,32 @@ const handleItemCheckedChange = async (index: number, event: Event) => {
   }, 500); // 500ms debounce
 
   debounceTimers.set(index, timer);
+};
+
+const handleDeleteList = async () => {
+  if (!list.value) return;
+
+  // Confirm deletion
+  if (
+    !confirm(
+      `Are you sure you want to delete "${list.value.name}"? This action cannot be undone.`
+    )
+  ) {
+    return;
+  }
+
+  isDeletingList.value = true;
+  error.value = null;
+
+  try {
+    const listId = route.params.id as string;
+    await deleteList(listId);
+    // Redirect to dashboard after successful deletion
+    await router.push("/dashboard");
+  } catch (err: any) {
+    error.value = err.data?.error || err.message || "Failed to delete list";
+    isDeletingList.value = false;
+  }
 };
 
 // Cleanup timers on unmount

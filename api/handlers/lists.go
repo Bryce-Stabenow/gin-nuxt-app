@@ -733,9 +733,59 @@ func HandleDeleteListItem(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// HandleDeleteList handles deleting a list (stub)
+// HandleDeleteList handles deleting a list
 func HandleDeleteList(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "Delete list not yet implemented"})
+	// Get user ID from context
+	userIDStr, exists := c.Get(middleware.UserIDKey)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
+
+	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
+		return
+	}
+
+	// Get list ID from URL parameter
+	listIDStr := c.Param("id")
+	listID, err := primitive.ObjectIDFromHex(listIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid list ID format"})
+		return
+	}
+
+	// Find list and verify ownership
+	collection := config.DB.Collection("lists")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var list models.List
+	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&list)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			c.JSON(http.StatusNotFound, gin.H{"error": "List not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find list"})
+		return
+	}
+
+	// Only the owner can delete the list
+	if list.UserID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to delete this list"})
+		return
+	}
+
+	// Delete the list
+	_, err = collection.DeleteOne(ctx, bson.M{"_id": listID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete list"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "List deleted successfully"})
 }
 
 // listToResponse converts a List model to ListResponse

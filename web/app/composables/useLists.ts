@@ -186,6 +186,17 @@ export const useLists = () => {
     })
   }
 
+  /**
+   * Delete a list
+   */
+  const deleteList = async (listId: string): Promise<void> => {
+    return await $fetch<void>(`${apiUrl}/lists/${listId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: getHeaders(),
+    })
+  }
+
   return {
     createList,
     getLists,
@@ -195,6 +206,7 @@ export const useLists = () => {
     updateListItem,
     updateListItemChecked,
     deleteListItem,
+    deleteList,
   }
 }
 
