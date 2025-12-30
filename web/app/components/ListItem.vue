@@ -3,10 +3,11 @@
     class="flex items-stretch gap-0 p-0 overflow-hidden rounded-lg"
   >
     <div 
-      class="flex-1 p-4 border-2 border-r-0 rounded-l-lg transition-colors"
+      class="flex-1 p-4 border-2 border-r-0 rounded-l-lg transition-colors cursor-pointer"
       :class="item.checked 
         ? 'border-gray-300 bg-gray-50' 
         : 'border-gray-200 hover:border-purple-300'"
+      @click="handleItemClick"
     >
       <div class="flex items-center gap-2">
         <span
@@ -26,7 +27,7 @@
       </div>
     </div>
     <div
-      @click="handleToggle"
+      @click.stop="handleToggle"
       class="w-1/4 flex items-center justify-center cursor-pointer transition-colors border-2 rounded-r-lg"
       :class="item.checked 
         ? 'bg-green-500 hover:bg-green-600 border-green-500 hover:border-green-600' 
@@ -89,6 +90,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
   toggle: [index: number];
   change: [index: number, event: Event];
+  click: [index: number];
 }>();
 
 const handleToggle = () => {
@@ -97,6 +99,10 @@ const handleToggle = () => {
 
 const handleChange = (event: Event) => {
   emit('change', props.originalIndex, event);
+};
+
+const handleItemClick = () => {
+  emit('click', props.originalIndex);
 };
 </script>
 

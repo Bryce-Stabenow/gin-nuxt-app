@@ -10,7 +10,17 @@
           class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all"
         >
           <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-gray-900">Add Item</h2>
+            <h2 class="text-2xl font-bold text-gray-900">Edit Item</h2>
+            <button
+              type="button"
+              @click="handleDelete"
+              :disabled="isDeleting"
+              class="px-3 py-2 text-red-600 border-2 border-red-300 rounded-lg font-medium hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Delete item"
+            >
+              <span v-if="isDeleting">Deleting...</span>
+              <span v-else>Delete</span>
+            </button>
           </div>
 
           <form @submit.prevent="handleSubmit" class="space-y-6">
@@ -86,8 +96,8 @@
                 :disabled="isSubmitting"
                 class="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-lg font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span v-if="isSubmitting">Adding...</span>
-                <span v-else>Add Item</span>
+                <span v-if="isSubmitting">Saving...</span>
+                <span v-else>Save Changes</span>
               </button>
             </div>
           </form>
@@ -100,17 +110,24 @@
 <script setup lang="ts">
 interface Props {
   isOpen: boolean
+  item?: {
+    name: string
+    quantity: number
+    details?: string
+  } | null
+  itemIndex?: number | null
 }
 
 interface Emits {
   (e: 'close'): void
-  (e: 'item-added', item: any): void
+  (e: 'item-updated', item: any): void
+  (e: 'item-deleted', item: any): void
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const { addListItem } = useLists()
+const { updateListItem, deleteListItem } = useLists()
 
 const form = ref({
   name: '',
@@ -120,6 +137,7 @@ const form = ref({
 
 const error = ref<string | null>(null)
 const isSubmitting = ref(false)
+const isDeleting = ref(false)
 const nameInput = ref<HTMLInputElement | null>(null)
 
 const close = () => {
@@ -132,46 +150,74 @@ const handleSubmit = async () => {
     return
   }
 
+  if (props.itemIndex === null || props.itemIndex === undefined) {
+    error.value = 'Item index is required'
+    return
+  }
+
   isSubmitting.value = true
   error.value = null
 
   try {
     const listId = useRoute().params.id as string
-    const updatedList = await addListItem(listId, {
+    // Always send details field when editing (even if empty) to allow clearing it
+    const trimmedDetails = (form.value.details || '').trim()
+    const updatedList = await updateListItem(listId, props.itemIndex, {
       name: form.value.name.trim(),
       quantity: form.value.quantity || 1,
-      details: form.value.details?.trim() || undefined,
+      details: trimmedDetails, // Send empty string to clear, or the trimmed value
     })
     
-    emit('item-added', updatedList)
-    
-    // Reset form
-    form.value = {
-      name: '',
-      quantity: 1,
-      details: '',
-    }
+    emit('item-updated', updatedList)
     close()
   } catch (err: any) {
-    error.value = err.data?.error || err.message || 'Failed to add item'
+    error.value = err.data?.error || err.message || 'Failed to update item'
   } finally {
     isSubmitting.value = false
   }
 }
+
+const handleDelete = async () => {
+  if (props.itemIndex === null || props.itemIndex === undefined) {
+    error.value = 'Item index is required'
+    return
+  }
+
+  isDeleting.value = true
+  error.value = null
+
+  try {
+    const listId = useRoute().params.id as string
+    const updatedList = await deleteListItem(listId, props.itemIndex)
+    
+    emit('item-deleted', updatedList)
+    close()
+  } catch (err: any) {
+    error.value = err.data?.error || err.message || 'Failed to delete item'
+  } finally {
+    isDeleting.value = false
+  }
+}
+
+// Update form when item prop changes
+watch(() => props.item, (item) => {
+  if (item) {
+    form.value = {
+      name: item.name,
+      quantity: item.quantity,
+      details: item.details || '',
+    }
+  }
+}, { immediate: true })
 
 // Focus name input when modal opens
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen) {
     nextTick(() => {
       nameInput.value?.focus()
+      nameInput.value?.select()
     })
   } else {
-    // Reset form when closing
-    form.value = {
-      name: '',
-      quantity: 1,
-      details: '',
-    }
     error.value = null
   }
 })

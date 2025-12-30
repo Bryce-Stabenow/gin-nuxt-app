@@ -43,6 +43,17 @@ export const useLists = () => {
     checked: boolean
   }
 
+  interface UpdateListItemRequest {
+    index: number
+    name?: string
+    quantity?: number
+    details?: string
+  }
+
+  interface DeleteListItemRequest {
+    index: number
+  }
+
   /**
    * Get headers with cookie forwarding for server-side requests
    */
@@ -139,13 +150,51 @@ export const useLists = () => {
     })
   }
 
+  /**
+   * Update an item's name, details, and quantity
+   */
+  const updateListItem = async (
+    listId: string,
+    itemIndex: number,
+    updates: { name?: string; quantity?: number; details?: string }
+  ): Promise<List> => {
+    return await $fetch<List>(`${apiUrl}/lists/${listId}/items`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: getHeaders(),
+      body: {
+        index: itemIndex,
+        ...updates,
+      } as UpdateListItemRequest,
+    })
+  }
+
+  /**
+   * Delete an item from a list
+   */
+  const deleteListItem = async (
+    listId: string,
+    itemIndex: number
+  ): Promise<List> => {
+    return await $fetch<List>(`${apiUrl}/lists/${listId}/items`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: getHeaders(),
+      body: {
+        index: itemIndex,
+      } as DeleteListItemRequest,
+    })
+  }
+
   return {
     createList,
     getLists,
     getList,
     updateList,
     addListItem,
+    updateListItem,
     updateListItemChecked,
+    deleteListItem,
   }
 }
 

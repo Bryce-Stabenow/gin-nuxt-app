@@ -53,6 +53,19 @@ type UpdateListItemCheckedRequest struct {
 	Checked bool `json:"checked"`
 }
 
+// UpdateListItemRequest represents the request body for updating an item's name, details, and quantity
+type UpdateListItemRequest struct {
+	Index    *int    `json:"index" binding:"required"`
+	Name     string  `json:"name,omitempty"`
+	Quantity *int    `json:"quantity,omitempty"`
+	Details  *string `json:"details,omitempty"`
+}
+
+// DeleteListItemRequest represents the request body for deleting an item from a list
+type DeleteListItemRequest struct {
+	Index *int `json:"index" binding:"required"`
+}
+
 // ListResponse represents the response for list operations
 type ListResponse struct {
 	ID          string    `json:"id"`

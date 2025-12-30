@@ -87,17 +87,102 @@
               </h2>
             </div>
             <div
-              aria-label="Add Item"
-              role="button"
-              tabindex="0"
+              v-if="list.items.length === 0 && !showAddForm"
               class="text-center text-gray-500 py-10 border-2 border-dashed border-gray-200 rounded-lg"
-              @click="openAddItemModal"
-              v-if="list.items.length === 0"
             >
               <p>No items in this list yet.</p>
               <p class="text-sm mt-2 text-purple-600">
-                Click here to get started.
+                Click the button below to get started.
               </p>
+            </div>
+            <!-- Inline Add Item Form (when no items) -->
+            <div v-if="list.items.length === 0 && showAddForm" class="p-4 border-2 border-purple-300 rounded-lg bg-purple-50">
+              <form @submit.prevent="handleAddItem" class="space-y-4">
+                <div>
+                  <label
+                    for="add-item-name-empty"
+                    class="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Name*
+                  </label>
+                  <input
+                    id="add-item-name-empty"
+                    v-model="addForm.name"
+                    type="text"
+                    required
+                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+                    placeholder="Enter item name"
+                    ref="addNameInput"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="add-item-quantity-empty"
+                    class="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Quantity
+                  </label>
+                  <input
+                    id="add-item-quantity-empty"
+                    v-model.number="addForm.quantity"
+                    type="number"
+                    min="1"
+                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+                    placeholder="1"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="add-item-details-empty"
+                    class="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Details
+                  </label>
+                  <textarea
+                    id="add-item-details-empty"
+                    v-model="addForm.details"
+                    maxlength="512"
+                    rows="3"
+                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                    placeholder="Add any additional details (optional)"
+                  />
+                  <div class="text-xs text-gray-500 mt-1 text-right">
+                    {{ (addForm.details || '').length }}/512
+                  </div>
+                </div>
+
+                <div v-if="addError" class="text-red-600 text-sm">
+                  {{ addError }}
+                </div>
+
+                <div class="flex gap-4 justify-center">
+                  <button
+                    type="button"
+                    @click="cancelAddForm"
+                    class="px-4 py-2 text-gray-700 border-2 border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    :disabled="isAdding"
+                    class="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-lg font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span v-if="isAdding">Adding...</span>
+                    <span v-else>Add Item</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+            <div v-if="list.items.length === 0 && !showAddForm" class="flex justify-center pt-6">
+              <button
+                @click="showAddForm = true"
+                class="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-lg font-medium hover:shadow-lg transition-all"
+              >
+                + Add Item
+              </button>
             </div>
             <div v-else class="space-y-5">
               <ListItem
@@ -107,11 +192,93 @@
                 :original-index="sortedItem.originalIndex"
                 @toggle="toggleItemChecked"
                 @change="handleItemCheckedChange"
+                @click="openEditModal"
               />
             </div>
-            <div class="flex justify-center pt-6">
+            <!-- Inline Add Item Form -->
+            <div v-if="showAddForm" class="mt-6 p-4 border-2 border-purple-300 rounded-lg bg-purple-50">
+              <form @submit.prevent="handleAddItem" class="space-y-4">
+                <div>
+                  <label
+                    for="add-item-name"
+                    class="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Name*
+                  </label>
+                  <input
+                    id="add-item-name"
+                    v-model="addForm.name"
+                    type="text"
+                    required
+                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+                    placeholder="Enter item name"
+                    ref="addNameInput"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="add-item-quantity"
+                    class="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Quantity
+                  </label>
+                  <input
+                    id="add-item-quantity"
+                    v-model.number="addForm.quantity"
+                    type="number"
+                    min="1"
+                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+                    placeholder="1"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="add-item-details"
+                    class="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Details
+                  </label>
+                  <textarea
+                    id="add-item-details"
+                    v-model="addForm.details"
+                    maxlength="512"
+                    rows="3"
+                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                    placeholder="Add any additional details (optional)"
+                  />
+                  <div class="text-xs text-gray-500 mt-1 text-right">
+                    {{ (addForm.details || '').length }}/512
+                  </div>
+                </div>
+
+                <div v-if="addError" class="text-red-600 text-sm">
+                  {{ addError }}
+                </div>
+
+                <div class="flex gap-4 justify-center">
+                  <button
+                    type="button"
+                    @click="cancelAddForm"
+                    class="px-4 py-2 text-gray-700 border-2 border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    :disabled="isAdding"
+                    class="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-lg font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span v-if="isAdding">Adding...</span>
+                    <span v-else>Add Item</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+            <div v-else class="flex justify-center pt-6">
               <button
-                @click="openAddItemModal"
+                @click="showAddForm = true"
                 class="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-lg font-medium hover:shadow-lg transition-all"
               >
                 + Add
@@ -149,11 +316,14 @@
       </div>
     </div>
 
-    <!-- Add Item Modal -->
-    <AddItemModal
-      :is-open="isAddItemModalOpen"
-      @close="closeAddItemModal"
-      @item-added="handleItemAdded"
+    <!-- Edit Item Modal -->
+    <EditItemModal
+      :is-open="isEditModalOpen"
+      :item="editingItem"
+      :item-index="editingItemIndex"
+      @close="closeEditModal"
+      @item-updated="handleItemUpdated"
+      @item-deleted="handleItemDeleted"
     />
   </div>
 </template>
@@ -162,7 +332,7 @@
 import confetti from "canvas-confetti";
 
 const route = useRoute();
-const { getList, updateList, updateListItemChecked } = useLists();
+const { getList, updateList, updateListItemChecked, addListItem } = useLists();
 
 const list = ref<any>(null);
 const isLoading = ref(true);
@@ -171,8 +341,20 @@ const isEditingName = ref(false);
 const editingName = ref("");
 const nameInput = ref<HTMLInputElement | null>(null);
 const isSaving = ref(false);
-const isAddItemModalOpen = ref(false);
+const showAddForm = ref(false);
+const isEditModalOpen = ref(false);
+const editingItem = ref<any>(null);
+const editingItemIndex = ref<number | null>(null);
 const wasAllChecked = ref(false);
+const addNameInput = ref<HTMLInputElement | null>(null);
+const isAdding = ref(false);
+const addError = ref<string | null>(null);
+
+const addForm = ref({
+  name: '',
+  quantity: 1,
+  details: '',
+});
 
 // Computed property to sort items: unchecked items first, checked items at the bottom
 const sortedItems = computed(() => {
@@ -317,15 +499,77 @@ const saveName = async () => {
   }
 };
 
-const openAddItemModal = () => {
-  isAddItemModalOpen.value = true;
+const handleAddItem = async () => {
+  if (!addForm.value.name.trim()) {
+    addError.value = 'Item name is required';
+    return;
+  }
+
+  isAdding.value = true;
+  addError.value = null;
+
+  try {
+    const listId = route.params.id as string;
+    const updatedList = await addListItem(listId, {
+      name: addForm.value.name.trim(),
+      quantity: addForm.value.quantity || 1,
+      details: addForm.value.details?.trim() || undefined,
+    });
+    
+    list.value = updatedList;
+    checkAndTriggerConfetti();
+    
+    // Reset form and hide
+    addForm.value = {
+      name: '',
+      quantity: 1,
+      details: '',
+    };
+    showAddForm.value = false;
+  } catch (err: any) {
+    addError.value = err.data?.error || err.message || 'Failed to add item';
+  } finally {
+    isAdding.value = false;
+  }
 };
 
-const closeAddItemModal = () => {
-  isAddItemModalOpen.value = false;
+const cancelAddForm = () => {
+  showAddForm.value = false;
+  addForm.value = {
+    name: '',
+    quantity: 1,
+    details: '',
+  };
+  addError.value = null;
 };
 
-const handleItemAdded = (updatedList: any) => {
+// Watch for when add form is shown to focus input
+watch(showAddForm, (isShown) => {
+  if (isShown) {
+    nextTick(() => {
+      addNameInput.value?.focus();
+    });
+  }
+});
+
+const openEditModal = (index: number) => {
+  if (!list.value || !list.value.items[index]) return;
+  editingItem.value = { ...list.value.items[index] };
+  editingItemIndex.value = index;
+  isEditModalOpen.value = true;
+};
+
+const closeEditModal = () => {
+  isEditModalOpen.value = false;
+  editingItem.value = null;
+  editingItemIndex.value = null;
+};
+
+const handleItemUpdated = (updatedList: any) => {
+  list.value = updatedList;
+};
+
+const handleItemDeleted = (updatedList: any) => {
   list.value = updatedList;
   checkAndTriggerConfetti();
 };

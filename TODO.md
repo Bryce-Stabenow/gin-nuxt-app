@@ -1,4 +1,4 @@
-- Edit and delete list items
+- Search/filter for list items
 - Delete lists
 - Reorder Lists
 - Reorder list items

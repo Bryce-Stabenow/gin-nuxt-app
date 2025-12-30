@@ -77,6 +77,8 @@ func main() {
 		protected.PUT("/lists/:id", handlers.HandleUpdateList)
 		protected.DELETE("/lists/:id", handlers.HandleDeleteList)
 		protected.POST("/lists/:id/items", handlers.HandleAddListItem)
+		protected.PUT("/lists/:id/items", handlers.HandleUpdateListItem)
+		protected.DELETE("/lists/:id/items", handlers.HandleDeleteListItem)
 		protected.PUT("/lists/:id/items/checked", handlers.HandleUpdateListItemChecked)
 	}
 
