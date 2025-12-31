@@ -18,7 +18,11 @@
               class="px-3 py-2 text-red-600 border-2 border-red-300 rounded-lg font-medium hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Delete item"
             >
-              <Icon v-if="isDeleting" name="svg-spinners:ring-resize" class="h-5 w-5" />
+              <Icon
+                v-if="isDeleting"
+                name="svg-spinners:ring-resize"
+                class="h-5 w-5"
+              />
               <Icon v-else name="heroicons:trash" class="h-5 w-5" />
             </button>
           </div>
@@ -75,7 +79,7 @@
                 placeholder="Add any additional details (optional)"
               />
               <div class="text-xs text-gray-500 mt-1 text-right">
-                {{ (form.details || '').length }}/512
+                {{ (form.details || "").length }}/512
               </div>
             </div>
 
@@ -109,118 +113,125 @@
 
 <script setup lang="ts">
 interface Props {
-  isOpen: boolean
+  isOpen: boolean;
   item?: {
-    name: string
-    quantity: number
-    details?: string
-  } | null
-  itemIndex?: number | null
+    name: string;
+    quantity: number;
+    details?: string;
+  } | null;
+  itemIndex?: number | null;
 }
 
 interface Emits {
-  (e: 'close'): void
-  (e: 'item-updated', item: any): void
-  (e: 'item-deleted', item: any): void
+  (e: "close"): void;
+  (e: "item-updated", item: any): void;
+  (e: "item-deleted", item: any): void;
 }
 
-const props = defineProps<Props>()
-const emit = defineEmits<Emits>()
+const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
 
-const { updateListItem, deleteListItem } = useLists()
+const { updateListItem, deleteListItem } = useLists();
 
 const form = ref({
-  name: '',
+  name: "",
   quantity: 1,
-  details: '',
-})
+  details: "",
+});
 
-const error = ref<string | null>(null)
-const isSubmitting = ref(false)
-const isDeleting = ref(false)
-const nameInput = ref<HTMLInputElement | null>(null)
+const error = ref<string | null>(null);
+const isSubmitting = ref(false);
+const isDeleting = ref(false);
+const nameInput = ref<HTMLInputElement | null>(null);
 
 const close = () => {
-  emit('close')
-}
+  emit("close");
+};
 
 const handleSubmit = async () => {
   if (!form.value.name.trim()) {
-    error.value = 'Item name is required'
-    return
+    error.value = "Item name is required";
+    return;
   }
 
   if (props.itemIndex === null || props.itemIndex === undefined) {
-    error.value = 'Item index is required'
-    return
+    error.value = "Item index is required";
+    return;
   }
 
-  isSubmitting.value = true
-  error.value = null
+  isSubmitting.value = true;
+  error.value = null;
 
   try {
-    const listId = useRoute().params.id as string
+    const listId = useRoute().params.id as string;
     // Always send details field when editing (even if empty) to allow clearing it
-    const trimmedDetails = (form.value.details || '').trim()
+    const trimmedDetails = (form.value.details || "").trim();
     const updatedList = await updateListItem(listId, props.itemIndex, {
       name: form.value.name.trim(),
       quantity: form.value.quantity || 1,
       details: trimmedDetails, // Send empty string to clear, or the trimmed value
-    })
-    
-    emit('item-updated', updatedList)
-    close()
+    });
+
+    emit("item-updated", updatedList);
+    close();
   } catch (err: any) {
-    error.value = err.data?.error || err.message || 'Failed to update item'
+    error.value = err.data?.error || err.message || "Failed to update item";
   } finally {
-    isSubmitting.value = false
+    isSubmitting.value = false;
   }
-}
+};
 
 const handleDelete = async () => {
   if (props.itemIndex === null || props.itemIndex === undefined) {
-    error.value = 'Item index is required'
-    return
+    error.value = "Item index is required";
+    return;
   }
 
-  isDeleting.value = true
-  error.value = null
+  isDeleting.value = true;
+  error.value = null;
 
   try {
-    const listId = useRoute().params.id as string
-    const updatedList = await deleteListItem(listId, props.itemIndex)
-    
-    emit('item-deleted', updatedList)
-    close()
+    const listId = useRoute().params.id as string;
+    const updatedList = await deleteListItem(listId, props.itemIndex);
+
+    emit("item-deleted", updatedList);
+    close();
   } catch (err: any) {
-    error.value = err.data?.error || err.message || 'Failed to delete item'
+    error.value = err.data?.error || err.message || "Failed to delete item";
   } finally {
-    isDeleting.value = false
+    isDeleting.value = false;
   }
-}
+};
 
 // Update form when item prop changes
-watch(() => props.item, (item) => {
-  if (item) {
-    form.value = {
-      name: item.name,
-      quantity: item.quantity,
-      details: item.details || '',
+watch(
+  () => props.item,
+  (item) => {
+    if (item) {
+      form.value = {
+        name: item.name,
+        quantity: item.quantity,
+        details: item.details || "",
+      };
     }
-  }
-}, { immediate: true })
+  },
+  { immediate: true }
+);
 
 // Focus name input when modal opens
-watch(() => props.isOpen, (isOpen) => {
-  if (isOpen) {
-    nextTick(() => {
-      nameInput.value?.focus()
-      nameInput.value?.select()
-    })
-  } else {
-    error.value = null
+watch(
+  () => props.isOpen,
+  (isOpen) => {
+    if (isOpen) {
+      nextTick(() => {
+        nameInput.value?.focus();
+        nameInput.value?.select();
+      });
+    } else {
+      error.value = null;
+    }
   }
-})
+);
 </script>
 
 <style scoped>
@@ -245,4 +256,3 @@ watch(() => props.isOpen, (isOpen) => {
   opacity: 0;
 }
 </style>
-

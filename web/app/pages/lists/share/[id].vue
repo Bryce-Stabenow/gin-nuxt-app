@@ -1,6 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-10 flex items-center justify-center">
-    <div class="bg-white rounded-xl shadow-2xl py-10 px-4 max-w-md w-full">
+  <PageContainer>
+    <div class="flex items-center justify-center">
+      <div class="bg-white rounded-xl shadow-2xl py-10 px-4 max-w-md w-full">
       <div v-if="isLoading" class="text-center">
         <div class="mb-4">
           <Icon name="svg-spinners:ring-resize" class="h-12 w-12 text-purple-600 mx-auto" />
@@ -26,8 +27,9 @@
         <p class="text-gray-700 text-lg mb-4">Successfully joined the list!</p>
         <p class="text-gray-500 text-sm mb-6">Redirecting to the list...</p>
       </div>
+      </div>
     </div>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup lang="ts">

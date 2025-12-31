@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="min-h-screen bg-gradient-to-br from-purple-500 to-purple-700 px-4 py-10"
-  >
+  <PageContainer>
     <div class="max-w-4xl mx-auto">
       <div class="bg-white rounded-xl shadow-2xl py-10 px-4">
         <div v-if="isLoading" class="text-center text-gray-600 text-base py-10">
@@ -59,7 +57,11 @@
                   class="p-1 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Delete list"
                 >
-                  <Icon v-if="isDeletingList" name="svg-spinners:ring-resize" class="h-5 w-5" />
+                  <Icon
+                    v-if="isDeletingList"
+                    name="svg-spinners:ring-resize"
+                    class="h-5 w-5"
+                  />
                   <Icon v-else name="heroicons:trash" class="h-5 w-5" />
                 </button>
               </div>
@@ -286,7 +288,7 @@
       @item-updated="handleItemUpdated"
       @item-deleted="handleItemDeleted"
     />
-  </div>
+  </PageContainer>
 </template>
 
 <script setup lang="ts">
@@ -642,7 +644,7 @@ const handleShareList = async () => {
   try {
     const shareUrl = `${window.location.origin}/lists/share/${list.value.id}`;
     await navigator.clipboard.writeText(shareUrl);
-    
+
     shareNotification.value = "Share link copied to clipboard!";
     setTimeout(() => {
       shareNotification.value = null;
@@ -663,7 +665,8 @@ const handleShareList = async () => {
         shareNotification.value = null;
       }, 3000);
     } catch (e) {
-      shareNotification.value = "Failed to copy link. Please copy manually: " + shareUrl;
+      shareNotification.value =
+        "Failed to copy link. Please copy manually: " + shareUrl;
       setTimeout(() => {
         shareNotification.value = null;
       }, 5000);
