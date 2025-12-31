@@ -16,25 +16,27 @@ const { checkAuth } = useAuth();
 
 // Set page title and meta tags
 useHead({
-  title: 'GrocerMe | Home',
+  title: "GrocerMe | Home",
   meta: [
     {
-      name: 'description',
-      content: 'Your personal grocery management solution. Organize your shopping lists and never forget an item again.'
+      name: "description",
+      content:
+        "Your personal grocery management solution. Organize your shopping lists and never forget an item again.",
     },
     {
-      property: 'og:title',
-      content: 'GrocerMe | Home'
+      property: "og:title",
+      content: "GrocerMe | Home",
     },
     {
-      property: 'og:description',
-      content: 'Your personal grocery management solution. Organize your shopping lists and never forget an item again.'
+      property: "og:description",
+      content:
+        "Your personal grocery management solution. Organize your shopping lists and never forget an item again.",
     },
     {
-      property: 'og:type',
-      content: 'website'
+      property: "og:type",
+      content: "website",
     },
-  ]
+  ],
 });
 
 // Check authentication on page load

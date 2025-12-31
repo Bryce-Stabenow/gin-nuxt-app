@@ -301,29 +301,29 @@ const { getList, updateList, updateListItemChecked, addListItem, deleteList } =
 const { user } = useAuth();
 
 useHead({
-  title: 'GrocerMe | List',
+  title: "GrocerMe | List",
   meta: [
     {
-      name: 'description',
-      content: 'View and manage your grocery list on GrocerMe.'
+      name: "description",
+      content: "View and manage your grocery list on GrocerMe.",
     },
     {
-      property: 'og:title',
-      content: 'GrocerMe | List'
+      property: "og:title",
+      content: "GrocerMe | List",
     },
     {
-      property: 'og:description',
-      content: 'View and manage your grocery list on GrocerMe.'
+      property: "og:description",
+      content: "View and manage your grocery list on GrocerMe.",
     },
     {
-      property: 'og:type',
-      content: 'website'
+      property: "og:type",
+      content: "website",
     },
     {
-      name: 'robots',
-      content: 'noindex, nofollow'
-    }
-  ]
+      name: "robots",
+      content: "noindex, nofollow",
+    },
+  ],
 });
 
 const list = ref<any>(null);

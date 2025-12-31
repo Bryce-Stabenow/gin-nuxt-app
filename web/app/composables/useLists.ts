@@ -1,135 +1,144 @@
 export const useLists = () => {
-  const config = useRuntimeConfig()
-  const apiUrl = config.public.apiUrl
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
 
   interface ListItem {
-    name: string
-    quantity: number
-    checked: boolean
-    details?: string
-    added_by: string
-    added_at: string
+    name: string;
+    quantity: number;
+    checked: boolean;
+    details?: string;
+    added_by: string;
+    added_at: string;
   }
 
   interface List {
-    id: string
-    user_id: string
-    name: string
-    description?: string
-    items: ListItem[]
-    shared_with: string[]
-    created_at: string
-    updated_at: string
+    id: string;
+    user_id: string;
+    name: string;
+    description?: string;
+    items: ListItem[];
+    shared_with: string[];
+    created_at: string;
+    updated_at: string;
   }
 
   interface CreateListRequest {
-    name: string
-    description?: string
+    name: string;
+    description?: string;
   }
 
   interface UpdateListRequest {
-    name?: string
-    description?: string
+    name?: string;
+    description?: string;
   }
 
   interface AddListItemRequest {
-    name: string
-    quantity?: number
-    details?: string
+    name: string;
+    quantity?: number;
+    details?: string;
   }
 
   interface UpdateListItemCheckedRequest {
-    index: number
-    checked: boolean
+    index: number;
+    checked: boolean;
   }
 
   interface UpdateListItemRequest {
-    index: number
-    name?: string
-    quantity?: number
-    details?: string
+    index: number;
+    name?: string;
+    quantity?: number;
+    details?: string;
   }
 
   interface DeleteListItemRequest {
-    index: number
+    index: number;
   }
 
   /**
    * Get headers with cookie forwarding for server-side requests
    */
   const getHeaders = (): Record<string, string> => {
-    const headers: Record<string, string> = {}
+    const headers: Record<string, string> = {};
     if (process.server) {
-      const requestHeaders = useRequestHeaders(['cookie'])
+      const requestHeaders = useRequestHeaders(["cookie"]);
       if (requestHeaders.cookie) {
-        headers.cookie = requestHeaders.cookie
+        headers.cookie = requestHeaders.cookie;
       }
     }
-    return headers
-  }
+    return headers;
+  };
 
   /**
    * Create a new list
    */
-  const createList = async (name: string, description?: string): Promise<List> => {
-    const body: CreateListRequest = { name }
+  const createList = async (
+    name: string,
+    description?: string
+  ): Promise<List> => {
+    const body: CreateListRequest = { name };
     if (description) {
-      body.description = description
+      body.description = description;
     }
 
     return await $fetch<List>(`${apiUrl}/lists`, {
-      method: 'POST',
-      credentials: 'include',
+      method: "POST",
+      credentials: "include",
       headers: getHeaders(),
       body,
-    })
-  }
+    });
+  };
 
   /**
    * Get all lists for the authenticated user
    */
   const getLists = async (): Promise<List[]> => {
     return await $fetch<List[]>(`${apiUrl}/lists`, {
-      method: 'GET',
-      credentials: 'include',
+      method: "GET",
+      credentials: "include",
       headers: getHeaders(),
-    })
-  }
+    });
+  };
 
   /**
    * Get a single list by ID
    */
   const getList = async (id: string): Promise<List> => {
     return await $fetch<List>(`${apiUrl}/lists/${id}`, {
-      method: 'GET',
-      credentials: 'include',
+      method: "GET",
+      credentials: "include",
       headers: getHeaders(),
-    })
-  }
+    });
+  };
 
   /**
    * Update a list
    */
-  const updateList = async (id: string, updates: UpdateListRequest): Promise<List> => {
+  const updateList = async (
+    id: string,
+    updates: UpdateListRequest
+  ): Promise<List> => {
     return await $fetch<List>(`${apiUrl}/lists/${id}`, {
-      method: 'PUT',
-      credentials: 'include',
+      method: "PUT",
+      credentials: "include",
       headers: getHeaders(),
       body: updates,
-    })
-  }
+    });
+  };
 
   /**
    * Add an item to a list
    */
-  const addListItem = async (listId: string, item: AddListItemRequest): Promise<List> => {
+  const addListItem = async (
+    listId: string,
+    item: AddListItemRequest
+  ): Promise<List> => {
     return await $fetch<List>(`${apiUrl}/lists/${listId}/items`, {
-      method: 'POST',
-      credentials: 'include',
+      method: "POST",
+      credentials: "include",
       headers: getHeaders(),
       body: item,
-    })
-  }
+    });
+  };
 
   /**
    * Update an item's checked state
@@ -140,15 +149,15 @@ export const useLists = () => {
     checked: boolean
   ): Promise<List> => {
     return await $fetch<List>(`${apiUrl}/lists/${listId}/items/checked`, {
-      method: 'PUT',
-      credentials: 'include',
+      method: "PUT",
+      credentials: "include",
       headers: getHeaders(),
       body: {
         index: itemIndex,
         checked,
       } as UpdateListItemCheckedRequest,
-    })
-  }
+    });
+  };
 
   /**
    * Update an item's name, details, and quantity
@@ -159,15 +168,15 @@ export const useLists = () => {
     updates: { name?: string; quantity?: number; details?: string }
   ): Promise<List> => {
     return await $fetch<List>(`${apiUrl}/lists/${listId}/items`, {
-      method: 'PUT',
-      credentials: 'include',
+      method: "PUT",
+      credentials: "include",
       headers: getHeaders(),
       body: {
         index: itemIndex,
         ...updates,
       } as UpdateListItemRequest,
-    })
-  }
+    });
+  };
 
   /**
    * Delete an item from a list
@@ -177,36 +186,36 @@ export const useLists = () => {
     itemIndex: number
   ): Promise<List> => {
     return await $fetch<List>(`${apiUrl}/lists/${listId}/items`, {
-      method: 'DELETE',
-      credentials: 'include',
+      method: "DELETE",
+      credentials: "include",
       headers: getHeaders(),
       body: {
         index: itemIndex,
       } as DeleteListItemRequest,
-    })
-  }
+    });
+  };
 
   /**
    * Delete a list
    */
   const deleteList = async (listId: string): Promise<void> => {
     return await $fetch<void>(`${apiUrl}/lists/${listId}`, {
-      method: 'DELETE',
-      credentials: 'include',
+      method: "DELETE",
+      credentials: "include",
       headers: getHeaders(),
-    })
-  }
+    });
+  };
 
   /**
    * Share a list - adds the current user to the list's shared_with array
    */
   const shareList = async (listId: string): Promise<List> => {
     return await $fetch<List>(`${apiUrl}/lists/share/${listId}`, {
-      method: 'POST',
-      credentials: 'include',
+      method: "POST",
+      credentials: "include",
       headers: getHeaders(),
-    })
-  }
+    });
+  };
 
   return {
     createList,
@@ -219,6 +228,5 @@ export const useLists = () => {
     deleteListItem,
     deleteList,
     shareList,
-  }
-}
-
+  };
+};
