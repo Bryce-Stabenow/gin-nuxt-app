@@ -66,15 +66,21 @@ type DeleteListItemRequest struct {
 	Index *int `json:"index" binding:"required"`
 }
 
+// SharedUser represents a user that a list is shared with
+type SharedUser struct {
+	ID    string `json:"id"`
+	Email string `json:"email"`
+}
+
 // ListResponse represents the response for list operations
 type ListResponse struct {
-	ID          string    `json:"id"`
-	UserID      string    `json:"user_id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description,omitempty"`
-	Items       []ListItem `json:"items"`
-	SharedWith  []string   `json:"shared_with"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID          string       `json:"id"`
+	UserID      string       `json:"user_id"`
+	Name        string       `json:"name"`
+	Description string       `json:"description,omitempty"`
+	Items       []ListItem   `json:"items"`
+	SharedWith  []SharedUser `json:"shared_with"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
 }
 

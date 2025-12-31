@@ -944,9 +944,51 @@ func HandleShareList(c *gin.Context) {
 
 // listToResponse converts a List model to ListResponse
 func listToResponse(list *models.List) models.ListResponse {
-	sharedWith := make([]string, len(list.SharedWith))
-	for i, id := range list.SharedWith {
-		sharedWith[i] = id.Hex()
+	// Fetch user emails for shared_with users
+	sharedWith := make([]models.SharedUser, 0, len(list.SharedWith))
+	if len(list.SharedWith) > 0 {
+		userCollection := config.DB.Collection("users")
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		// Fetch all users in a single query
+		cursor, err := userCollection.Find(ctx, bson.M{"_id": bson.M{"$in": list.SharedWith}})
+		if err == nil {
+			defer cursor.Close(ctx)
+			
+			// Create a map of user ID to email for quick lookup
+			userMap := make(map[primitive.ObjectID]string)
+			var user models.User
+			for cursor.Next(ctx) {
+				if err := cursor.Decode(&user); err == nil {
+					userMap[user.ID] = user.Email
+				}
+			}
+
+			// Build sharedWith array maintaining the original order
+			for _, userID := range list.SharedWith {
+				if email, exists := userMap[userID]; exists {
+					sharedWith = append(sharedWith, models.SharedUser{
+						ID:    userID.Hex(),
+						Email: email,
+					})
+				} else {
+					// If user not found, still include the ID but with empty email
+					sharedWith = append(sharedWith, models.SharedUser{
+						ID:    userID.Hex(),
+						Email: "",
+					})
+				}
+			}
+		} else {
+			// If query fails, fall back to just IDs
+			for _, userID := range list.SharedWith {
+				sharedWith = append(sharedWith, models.SharedUser{
+					ID:    userID.Hex(),
+					Email: "",
+				})
+			}
+		}
 	}
 
 	return models.ListResponse{

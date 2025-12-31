@@ -402,11 +402,11 @@
             </h2>
             <div class="flex flex-wrap gap-2">
               <span
-                v-for="userId in list.shared_with"
-                :key="userId"
+                v-for="sharedUser in list.shared_with"
+                :key="sharedUser.id"
                 class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm"
               >
-                {{ userId }}
+                {{ sharedUser.email || sharedUser.id }}
               </span>
             </div>
           </div>
