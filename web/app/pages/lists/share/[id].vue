@@ -70,18 +70,16 @@ const error = ref<string | null>(null)
 const success = ref(false)
 const loadingMessage = ref('Processing...')
 
-onMounted(async () => {
-  const listId = route.params.id as string
+// Handle sharing on page load
+const listId = route.params.id as string
 
-  // Check if user is authenticated
-  const authenticated = await checkAuth()
+// Check if user is authenticated
+const authenticated = await checkAuth()
 
-  if (!authenticated) {
-    // Redirect to signup with redirect parameter
-    await router.push(`/signup?redirect=/lists/share/${listId}`)
-    return
-  }
-
+if (!authenticated) {
+  // Redirect to signup with redirect parameter
+  await router.push(`/signup?redirect=/lists/share/${listId}`)
+} else {
   // User is authenticated, proceed with sharing
   try {
     loadingMessage.value = 'Adding you to the list...'
@@ -106,6 +104,6 @@ onMounted(async () => {
     }
     isLoading.value = false
   }
-})
+}
 </script>
 

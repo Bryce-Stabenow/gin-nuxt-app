@@ -148,15 +148,6 @@ const isSharedList = (list: any): boolean => {
   return list.user_id !== user.value.id;
 };
 
-// Check authentication on page load
-onMounted(async () => {
-  await checkAuth();
-
-  if (isAuthenticated.value) {
-    await loadLists();
-  }
-});
-
 const loadLists = async () => {
   listsLoading.value = true;
   listsError.value = null;
@@ -170,4 +161,11 @@ const loadLists = async () => {
     listsLoading.value = false;
   }
 };
+
+// Check authentication on page load
+await checkAuth();
+
+if (isAuthenticated.value) {
+  await loadLists();
+}
 </script>

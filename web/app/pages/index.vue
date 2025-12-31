@@ -38,7 +38,5 @@ useHead({
 });
 
 // Check authentication on page load
-onMounted(async () => {
-  await checkAuth();
-});
+await checkAuth();
 </script>

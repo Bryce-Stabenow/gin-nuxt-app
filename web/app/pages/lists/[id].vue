@@ -440,10 +440,6 @@ const checkAndTriggerConfetti = () => {
   wasAllChecked.value = allChecked;
 };
 
-onMounted(async () => {
-  await loadList();
-});
-
 const loadList = async () => {
   isLoading.value = true;
   error.value = null;
@@ -726,6 +722,9 @@ const handleDeleteList = async () => {
     isDeletingList.value = false;
   }
 };
+
+// Load list on page load
+await loadList();
 
 // Cleanup timers on unmount
 onUnmounted(() => {
