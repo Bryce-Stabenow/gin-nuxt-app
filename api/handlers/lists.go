@@ -3,40 +3,30 @@ package handlers
 import (
 	"context"
 	"net/http"
-	"strings"
 	"time"
 
 	"bryce-stabenow/grocer-me/config"
 	"bryce-stabenow/grocer-me/middleware"
 	"bryce-stabenow/grocer-me/models"
+	"bryce-stabenow/grocer-me/utils"
 
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // HandleCreateList handles creating a new list
-func HandleCreateList(c *gin.Context) {
-	// Get user ID from context (set by JWT middleware)
-	userIDStr, exists := c.Get(middleware.UserIDKey)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
-		return
-	}
-
-	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
-		return
+func HandleCreateList(w http.ResponseWriter, r *http.Request) {
+	// Get authenticated user ID
+	userID, ok := utils.GetAuthenticatedUser(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
 	// Parse request body
 	var req models.CreateListRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := utils.DecodeJSON(r, &req); err != nil {
+		utils.ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -59,7 +49,7 @@ func HandleCreateList(c *gin.Context) {
 
 	result, err := collection.InsertOne(ctx, list)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create list"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to create list")
 		return
 	}
 
@@ -67,28 +57,21 @@ func HandleCreateList(c *gin.Context) {
 	var createdList models.List
 	err = collection.FindOne(ctx, bson.M{"_id": result.InsertedID}).Decode(&createdList)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve created list"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve created list")
 		return
 	}
 
 	// Convert to response format
 	response := listToResponse(&createdList)
-	c.JSON(http.StatusCreated, response)
+	utils.JSONResponse(w, http.StatusCreated, response)
 }
 
 // HandleGetLists handles getting all lists for the authenticated user
-func HandleGetLists(c *gin.Context) {
-	// Get user ID from context
-	userIDStr, exists := c.Get(middleware.UserIDKey)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
-		return
-	}
-
-	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
-		return
+func HandleGetLists(w http.ResponseWriter, r *http.Request) {
+	// Get authenticated user ID
+	userID, ok := utils.GetAuthenticatedUser(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
 	// Find lists where user is owner or in shared_with array
@@ -108,14 +91,14 @@ func HandleGetLists(c *gin.Context) {
 
 	cursor, err := collection.Find(ctx, filter, opts)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch lists"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to fetch lists")
 		return
 	}
 	defer cursor.Close(ctx)
 
 	var lists []models.List
 	if err = cursor.All(ctx, &lists); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode lists"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to decode lists")
 		return
 	}
 
@@ -125,136 +108,76 @@ func HandleGetLists(c *gin.Context) {
 		responses[i] = listToResponse(&list)
 	}
 
-	c.JSON(http.StatusOK, responses)
+	utils.JSONResponse(w, http.StatusOK, responses)
 }
 
 // HandleGetList handles getting a single list by ID
-func HandleGetList(c *gin.Context) {
-	// Get user ID from context
-	userIDStr, exists := c.Get(middleware.UserIDKey)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
-		return
+func HandleGetList(w http.ResponseWriter, r *http.Request) {
+	// Get authenticated user ID
+	userID, ok := utils.GetAuthenticatedUser(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
-	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
-		return
+	// Get and validate list ID
+	listID, ok := utils.GetAndValidateListID(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
-	// Get list ID from URL parameter
-	listIDStr := c.Param("id")
-	listID, err := primitive.ObjectIDFromHex(listIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid list ID format"})
-		return
+	// Fetch list
+	list, ok := utils.FetchList(w, listID)
+	if !ok {
+		return // Error response already sent
 	}
 
-	// Find list
-	collection := config.DB.Collection("lists")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	var list models.List
-	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&list)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusNotFound, gin.H{"error": "List not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find list"})
-		return
-	}
-
-	// Check if user has access (owner or in shared_with)
-	hasAccess := false
-	if list.UserID == userID {
-		hasAccess = true
-	} else {
-		for _, sharedUserID := range list.SharedWith {
-			if sharedUserID == userID {
-				hasAccess = true
-				break
-			}
-		}
-	}
-
-	if !hasAccess {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have access to this list"})
-		return
+	// Check if user has access
+	if !utils.CheckListAccess(w, list, userID) {
+		return // Error response already sent
 	}
 
 	// Convert to response format
-	response := listToResponse(&list)
-	c.JSON(http.StatusOK, response)
+	response := listToResponse(list)
+	utils.JSONResponse(w, http.StatusOK, response)
 }
 
 // HandleUpdateList handles updating a list
-func HandleUpdateList(c *gin.Context) {
-	// Get user ID from context
-	userIDStr, exists := c.Get(middleware.UserIDKey)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
-		return
+func HandleUpdateList(w http.ResponseWriter, r *http.Request) {
+	// Get authenticated user ID
+	userID, ok := utils.GetAuthenticatedUser(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
-	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
-		return
-	}
-
-	// Get list ID from URL parameter
-	listIDStr := c.Param("id")
-	listID, err := primitive.ObjectIDFromHex(listIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid list ID format"})
-		return
+	// Get and validate list ID
+	listID, ok := utils.GetAndValidateListID(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
 	// Parse request body
 	var req models.UpdateListRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := utils.DecodeJSON(r, &req); err != nil {
+		utils.ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Find list and verify access
+	// Fetch list and verify access
+	list, ok := utils.FetchList(w, listID)
+	if !ok {
+		return // Error response already sent
+	}
+
+	// Check if user has access
+	if !utils.CheckListAccess(w, list, userID) {
+		return // Error response already sent
+	}
+
+	// Build update document
 	collection := config.DB.Collection("lists")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	var list models.List
-	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&list)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusNotFound, gin.H{"error": "List not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find list"})
-		return
-	}
-
-	// Check if user has access (owner or in shared_with can update)
-	hasAccess := false
-	if list.UserID == userID {
-		hasAccess = true
-	} else {
-		for _, sharedUserID := range list.SharedWith {
-			if sharedUserID == userID {
-				hasAccess = true
-				break
-			}
-		}
-	}
-
-	if !hasAccess {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to update this list"})
-		return
-	}
-
-	// Build update document
 	update := bson.M{
 		"updated_at": time.Now(),
 	}
@@ -266,13 +189,13 @@ func HandleUpdateList(c *gin.Context) {
 	}
 
 	// Update the list
-	_, err = collection.UpdateOne(
+	_, err := collection.UpdateOne(
 		ctx,
 		bson.M{"_id": listID},
 		bson.M{"$set": update},
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update list"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to update list")
 		return
 	}
 
@@ -280,42 +203,33 @@ func HandleUpdateList(c *gin.Context) {
 	var updatedList models.List
 	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&updatedList)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve updated list"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve updated list")
 		return
 	}
 
 	// Convert to response format
 	response := listToResponse(&updatedList)
-	c.JSON(http.StatusOK, response)
+	utils.JSONResponse(w, http.StatusOK, response)
 }
 
 // HandleAddListItem handles adding an item to a list
-func HandleAddListItem(c *gin.Context) {
-	// Get user ID from context
-	userIDStr, exists := c.Get(middleware.UserIDKey)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
-		return
+func HandleAddListItem(w http.ResponseWriter, r *http.Request) {
+	// Get authenticated user ID
+	userID, ok := utils.GetAuthenticatedUser(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
-	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
-		return
-	}
-
-	// Get list ID from URL parameter
-	listIDStr := c.Param("id")
-	listID, err := primitive.ObjectIDFromHex(listIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid list ID format"})
-		return
+	// Get and validate list ID
+	listID, ok := utils.GetAndValidateListID(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
 	// Parse request body
 	var req models.AddListItemRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := utils.DecodeJSON(r, &req); err != nil {
+		utils.ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -325,41 +239,22 @@ func HandleAddListItem(c *gin.Context) {
 		quantity = 1
 	}
 
-	// Find list and verify access
+	// Fetch list and verify access
+	list, ok := utils.FetchList(w, listID)
+	if !ok {
+		return // Error response already sent
+	}
+
+	// Check if user has access
+	if !utils.CheckListAccess(w, list, userID) {
+		return // Error response already sent
+	}
+
+	// Create new item
 	collection := config.DB.Collection("lists")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	var list models.List
-	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&list)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusNotFound, gin.H{"error": "List not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find list"})
-		return
-	}
-
-	// Check if user has access (owner or in shared_with)
-	hasAccess := false
-	if list.UserID == userID {
-		hasAccess = true
-	} else {
-		for _, sharedUserID := range list.SharedWith {
-			if sharedUserID == userID {
-				hasAccess = true
-				break
-			}
-		}
-	}
-
-	if !hasAccess {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have access to this list"})
-		return
-	}
-
-	// Create new item
 	now := time.Now()
 	newItem := models.ListItem{
 		Name:     req.Name,
@@ -376,13 +271,13 @@ func HandleAddListItem(c *gin.Context) {
 		"$set":  bson.M{"updated_at": now},
 	}
 
-	_, err = collection.UpdateOne(
+	_, err := collection.UpdateOne(
 		ctx,
 		bson.M{"_id": listID},
 		update,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add item to list"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to add item to list")
 		return
 	}
 
@@ -390,99 +285,71 @@ func HandleAddListItem(c *gin.Context) {
 	var updatedList models.List
 	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&updatedList)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve updated list"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve updated list")
 		return
 	}
 
 	// Convert to response format
 	response := listToResponse(&updatedList)
-	c.JSON(http.StatusOK, response)
+	utils.JSONResponse(w, http.StatusOK, response)
 }
 
 // HandleUpdateListItemChecked handles updating an item's checked state
-func HandleUpdateListItemChecked(c *gin.Context) {
-	// Get user ID from context
-	userIDStr, exists := c.Get(middleware.UserIDKey)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
-		return
+func HandleUpdateListItemChecked(w http.ResponseWriter, r *http.Request) {
+	// Get authenticated user ID
+	userID, ok := utils.GetAuthenticatedUser(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
-	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
-		return
-	}
-
-	// Get list ID from URL parameter
-	listIDStr := c.Param("id")
-	listID, err := primitive.ObjectIDFromHex(listIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid list ID format"})
-		return
+	// Get and validate list ID
+	listID, ok := utils.GetAndValidateListID(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
 	// Parse request body
 	var req models.UpdateListItemCheckedRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := utils.DecodeJSON(r, &req); err != nil {
+		utils.ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Find list and verify access
-	collection := config.DB.Collection("lists")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	var list models.List
-	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&list)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusNotFound, gin.H{"error": "List not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find list"})
-		return
+	// Fetch list and verify access
+	list, ok := utils.FetchList(w, listID)
+	if !ok {
+		return // Error response already sent
 	}
 
-	// Check if user has access (owner or in shared_with)
-	hasAccess := false
-	if list.UserID == userID {
-		hasAccess = true
-	} else {
-		for _, sharedUserID := range list.SharedWith {
-			if sharedUserID == userID {
-				hasAccess = true
-				break
-			}
-		}
-	}
-
-	if !hasAccess {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have access to this list"})
-		return
+	// Check if user has access
+	if !utils.CheckListAccess(w, list, userID) {
+		return // Error response already sent
 	}
 
 	// Validate index
 	if req.Index == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Index is required"})
+		utils.ErrorResponse(w, http.StatusBadRequest, "Index is required")
 		return
 	}
 
 	index := *req.Index
 	if index < 0 || index >= len(list.Items) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item index"})
+		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid item index")
 		return
 	}
 
 	// Update the item's checked state
+	collection := config.DB.Collection("lists")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	now := time.Now()
 	
 	// Update the item in the slice
 	list.Items[index].Checked = req.Checked
 
 	// Update the entire items array and updated_at in the database
-	_, err = collection.UpdateOne(
+	_, err := collection.UpdateOne(
 		ctx,
 		bson.M{"_id": listID},
 		bson.M{
@@ -493,7 +360,7 @@ func HandleUpdateListItemChecked(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update item"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to update item")
 		return
 	}
 
@@ -501,98 +368,70 @@ func HandleUpdateListItemChecked(c *gin.Context) {
 	var updatedList models.List
 	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&updatedList)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve updated list"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve updated list")
 		return
 	}
 
 	// Convert to response format
 	response := listToResponse(&updatedList)
-	c.JSON(http.StatusOK, response)
+	utils.JSONResponse(w, http.StatusOK, response)
 }
 
 // HandleUpdateListItem handles updating an item's name, details, and quantity
-func HandleUpdateListItem(c *gin.Context) {
-	// Get user ID from context
-	userIDStr, exists := c.Get(middleware.UserIDKey)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
-		return
+func HandleUpdateListItem(w http.ResponseWriter, r *http.Request) {
+	// Get authenticated user ID
+	userID, ok := utils.GetAuthenticatedUser(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
-	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
-		return
-	}
-
-	// Get list ID from URL parameter
-	listIDStr := c.Param("id")
-	listID, err := primitive.ObjectIDFromHex(listIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid list ID format"})
-		return
+	// Get and validate list ID
+	listID, ok := utils.GetAndValidateListID(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
 	// Parse request body
 	var req models.UpdateListItemRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := utils.DecodeJSON(r, &req); err != nil {
+		utils.ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Find list and verify access
-	collection := config.DB.Collection("lists")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	var list models.List
-	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&list)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusNotFound, gin.H{"error": "List not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find list"})
-		return
+	// Fetch list and verify access
+	list, ok := utils.FetchList(w, listID)
+	if !ok {
+		return // Error response already sent
 	}
 
-	// Check if user has access (owner or in shared_with)
-	hasAccess := false
-	if list.UserID == userID {
-		hasAccess = true
-	} else {
-		for _, sharedUserID := range list.SharedWith {
-			if sharedUserID == userID {
-				hasAccess = true
-				break
-			}
-		}
-	}
-
-	if !hasAccess {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have access to this list"})
-		return
+	// Check if user has access
+	if !utils.CheckListAccess(w, list, userID) {
+		return // Error response already sent
 	}
 
 	// Validate index
 	if req.Index == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Index is required"})
+		utils.ErrorResponse(w, http.StatusBadRequest, "Index is required")
 		return
 	}
 
 	index := *req.Index
 	if index < 0 || index >= len(list.Items) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item index"})
+		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid item index")
 		return
 	}
 
 	// Validate details length if provided
 	if req.Details != nil && len(*req.Details) > 512 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Details must be 512 characters or less"})
+		utils.ErrorResponse(w, http.StatusBadRequest, "Details must be 512 characters or less")
 		return
 	}
 
 	// Update the item's fields
+	collection := config.DB.Collection("lists")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	now := time.Now()
 	
 	// Update fields if provided
@@ -608,7 +447,7 @@ func HandleUpdateListItem(c *gin.Context) {
 	}
 
 	// Update the entire items array and updated_at in the database
-	_, err = collection.UpdateOne(
+	_, err := collection.UpdateOne(
 		ctx,
 		bson.M{"_id": listID},
 		bson.M{
@@ -619,7 +458,7 @@ func HandleUpdateListItem(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update item"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to update item")
 		return
 	}
 
@@ -627,99 +466,71 @@ func HandleUpdateListItem(c *gin.Context) {
 	var updatedList models.List
 	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&updatedList)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve updated list"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve updated list")
 		return
 	}
 
 	// Convert to response format
 	response := listToResponse(&updatedList)
-	c.JSON(http.StatusOK, response)
+	utils.JSONResponse(w, http.StatusOK, response)
 }
 
 // HandleDeleteListItem handles deleting an item from a list
-func HandleDeleteListItem(c *gin.Context) {
-	// Get user ID from context
-	userIDStr, exists := c.Get(middleware.UserIDKey)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
-		return
+func HandleDeleteListItem(w http.ResponseWriter, r *http.Request) {
+	// Get authenticated user ID
+	userID, ok := utils.GetAuthenticatedUser(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
-	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
-		return
-	}
-
-	// Get list ID from URL parameter
-	listIDStr := c.Param("id")
-	listID, err := primitive.ObjectIDFromHex(listIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid list ID format"})
-		return
+	// Get and validate list ID
+	listID, ok := utils.GetAndValidateListID(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
 	// Parse request body
 	var req models.DeleteListItemRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := utils.DecodeJSON(r, &req); err != nil {
+		utils.ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Find list and verify access
-	collection := config.DB.Collection("lists")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	var list models.List
-	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&list)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusNotFound, gin.H{"error": "List not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find list"})
-		return
+	// Fetch list and verify access
+	list, ok := utils.FetchList(w, listID)
+	if !ok {
+		return // Error response already sent
 	}
 
-	// Check if user has access (owner or in shared_with)
-	hasAccess := false
-	if list.UserID == userID {
-		hasAccess = true
-	} else {
-		for _, sharedUserID := range list.SharedWith {
-			if sharedUserID == userID {
-				hasAccess = true
-				break
-			}
-		}
-	}
-
-	if !hasAccess {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have access to this list"})
-		return
+	// Check if user has access
+	if !utils.CheckListAccess(w, list, userID) {
+		return // Error response already sent
 	}
 
 	// Validate index
 	if req.Index == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Index is required"})
+		utils.ErrorResponse(w, http.StatusBadRequest, "Index is required")
 		return
 	}
 
 	index := *req.Index
 	if index < 0 || index >= len(list.Items) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item index"})
+		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid item index")
 		return
 	}
 
 	// Remove the item from the slice
+	collection := config.DB.Collection("lists")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	updatedItems := make([]models.ListItem, 0, len(list.Items)-1)
 	updatedItems = append(updatedItems, list.Items[:index]...)
 	updatedItems = append(updatedItems, list.Items[index+1:]...)
 
 	// Update the items array and updated_at in the database
 	now := time.Now()
-	_, err = collection.UpdateOne(
+	_, err := collection.UpdateOne(
 		ctx,
 		bson.M{"_id": listID},
 		bson.M{
@@ -730,7 +541,7 @@ func HandleDeleteListItem(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete item"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to delete item")
 		return
 	}
 
@@ -738,163 +549,85 @@ func HandleDeleteListItem(c *gin.Context) {
 	var updatedList models.List
 	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&updatedList)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve updated list"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve updated list")
 		return
 	}
 
 	// Convert to response format
 	response := listToResponse(&updatedList)
-	c.JSON(http.StatusOK, response)
+	utils.JSONResponse(w, http.StatusOK, response)
 }
 
 // HandleDeleteList handles deleting a list
-func HandleDeleteList(c *gin.Context) {
-	// Get user ID from context
-	userIDStr, exists := c.Get(middleware.UserIDKey)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
-		return
+func HandleDeleteList(w http.ResponseWriter, r *http.Request) {
+	// Get authenticated user ID
+	userID, ok := utils.GetAuthenticatedUser(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
-	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
-		return
+	// Get and validate list ID
+	listID, ok := utils.GetAndValidateListID(w, r)
+	if !ok {
+		return // Error response already sent
 	}
 
-	// Get list ID from URL parameter
-	listIDStr := c.Param("id")
-	listID, err := primitive.ObjectIDFromHex(listIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid list ID format"})
-		return
+	// Fetch list and verify ownership
+	list, ok := utils.FetchList(w, listID)
+	if !ok {
+		return // Error response already sent
 	}
 
-	// Find list and verify ownership
+	// Only the owner can delete the list
+	if !utils.CheckListOwnership(w, list, userID) {
+		return // Error response already sent
+	}
+
+	// Delete the list
 	collection := config.DB.Collection("lists")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	var list models.List
-	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&list)
+	_, err := collection.DeleteOne(ctx, bson.M{"_id": listID})
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusNotFound, gin.H{"error": "List not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find list"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to delete list")
 		return
 	}
 
-	// Only the owner can delete the list
-	if list.UserID != userID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to delete this list"})
-		return
-	}
-
-	// Delete the list
-	_, err = collection.DeleteOne(ctx, bson.M{"_id": listID})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete list"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "List deleted successfully"})
+	utils.JSONResponse(w, http.StatusOK, map[string]string{"message": "List deleted successfully"})
 }
 
 // HandleShareList handles adding the current user to a list's shared_with array
 // This endpoint is public but requires authentication (checked internally)
-func HandleShareList(c *gin.Context) {
-	// Get user ID from context (set by optional JWT middleware or manual check)
-	userIDStr, exists := c.Get(middleware.UserIDKey)
-	if !exists {
-		// Try to extract token manually for this public endpoint
-		var tokenString string
-		
-		// First, try to get token from Authorization header
-		authHeader := c.GetHeader("Authorization")
-		if authHeader != "" {
-			parts := strings.Split(authHeader, " ")
-			if len(parts) == 2 && parts[0] == "Bearer" {
-				tokenString = parts[1]
-			}
-		}
-		
-		// If not in header, try to get from cookie
-		if tokenString == "" {
-			cookie, err := c.Cookie("jwt_token")
-			if err == nil && cookie != "" {
-				tokenString = cookie
-			}
-		}
-		
-		// If no token found, return error indicating authentication required
-		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required. Please sign in to join this list."})
-			return
-		}
-		
-		// Parse and validate token
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return []byte(config.JWTSecret), nil
-		})
-		
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token. Please sign in to join this list."})
-			return
-		}
-		
-		// Extract claims
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
-			return
-		}
-		
-		// Extract user ID from claims
-		userIDStr, ok = claims["user_id"].(string)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID in token"})
-			return
-		}
-	}
-
-	userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
+func HandleShareList(w http.ResponseWriter, r *http.Request) {
+	// Try to extract user ID from JWT (manual check for this public endpoint)
+	userIDStr, err := middleware.ExtractUserID(r)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
+		utils.ErrorResponse(w, http.StatusUnauthorized, "Authentication required. Please sign in to join this list.")
 		return
 	}
 
-	// Get list ID from URL parameter
-	listIDStr := c.Param("id")
-	listID, err := primitive.ObjectIDFromHex(listIDStr)
+	userID, err := primitive.ObjectIDFromHex(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid list ID format"})
+		utils.ErrorResponse(w, http.StatusBadRequest, "Invalid user ID format")
 		return
 	}
 
-	// Find list
-	collection := config.DB.Collection("lists")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	// Get and validate list ID
+	listID, ok := utils.GetAndValidateListID(w, r)
+	if !ok {
+		return // Error response already sent
+	}
 
-	var list models.List
-	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&list)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusNotFound, gin.H{"error": "List not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find list"})
-		return
+	// Fetch list
+	list, ok := utils.FetchList(w, listID)
+	if !ok {
+		return // Error response already sent
 	}
 
 	// Check if user is already the owner
 	if list.UserID == userID {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "You are already the owner of this list"})
+		utils.ErrorResponse(w, http.StatusBadRequest, "You are already the owner of this list")
 		return
 	}
 
@@ -909,12 +642,16 @@ func HandleShareList(c *gin.Context) {
 
 	if alreadyShared {
 		// User is already shared, return the list anyway (idempotent)
-		response := listToResponse(&list)
-		c.JSON(http.StatusOK, response)
+		response := listToResponse(list)
+		utils.JSONResponse(w, http.StatusOK, response)
 		return
 	}
 
 	// Add user to shared_with array
+	collection := config.DB.Collection("lists")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	now := time.Now()
 	_, err = collection.UpdateOne(
 		ctx,
@@ -925,7 +662,7 @@ func HandleShareList(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add user to shared list"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to add user to shared list")
 		return
 	}
 
@@ -933,13 +670,13 @@ func HandleShareList(c *gin.Context) {
 	var updatedList models.List
 	err = collection.FindOne(ctx, bson.M{"_id": listID}).Decode(&updatedList)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve updated list"})
+		utils.ErrorResponse(w, http.StatusInternalServerError, "Failed to retrieve updated list")
 		return
 	}
 
 	// Convert to response format
 	response := listToResponse(&updatedList)
-	c.JSON(http.StatusOK, response)
+	utils.JSONResponse(w, http.StatusOK, response)
 }
 
 // listToResponse converts a List model to ListResponse
@@ -1002,4 +739,3 @@ func listToResponse(list *models.List) models.ListResponse {
 		UpdatedAt:   list.UpdatedAt,
 	}
 }
-

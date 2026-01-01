@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
 	"bryce-stabenow/grocer-me/config"
 	"bryce-stabenow/grocer-me/handlers"
 	"bryce-stabenow/grocer-me/middleware"
+	"bryce-stabenow/grocer-me/utils"
 
-	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
@@ -48,15 +49,15 @@ func main() {
 	// Set MongoDB client in config
 	config.SetMongoClient(client)
 
-	// Initialize Gin router
-	router := gin.Default()
+	// Initialize router
+	router := utils.NewRouter()
 
 	// Apply CORS middleware to all routes
-	router.Use(middleware.CORS())
+	router.Use(middleware.CORS)
 
 	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
+	router.GET("/health", func(w http.ResponseWriter, r *http.Request) {
+		utils.JSONResponse(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
 	// Public routes - API endpoints
@@ -65,23 +66,19 @@ func main() {
 	router.POST("/lists/share/:id", handlers.HandleShareList)
 
 	// Protected routes (require JWT)
-	protected := router.Group("/")
-	protected.Use(middleware.JWTAuthMiddleware())
-	{
-		protected.GET("/me", handlers.HandleGetMe)
-		protected.POST("/logout", handlers.HandleLogout)
+	router.GET("/me", withAuth(handlers.HandleGetMe))
+	router.POST("/logout", withAuth(handlers.HandleLogout))
 
-		// List routes
-		protected.POST("/lists", handlers.HandleCreateList)
-		protected.GET("/lists", handlers.HandleGetLists)
-		protected.GET("/lists/:id", handlers.HandleGetList)
-		protected.PUT("/lists/:id", handlers.HandleUpdateList)
-		protected.DELETE("/lists/:id", handlers.HandleDeleteList)
-		protected.POST("/lists/:id/items", handlers.HandleAddListItem)
-		protected.PUT("/lists/:id/items", handlers.HandleUpdateListItem)
-		protected.DELETE("/lists/:id/items", handlers.HandleDeleteListItem)
-		protected.PUT("/lists/:id/items/checked", handlers.HandleUpdateListItemChecked)
-	}
+	// List routes
+	router.POST("/lists", withAuth(handlers.HandleCreateList))
+	router.GET("/lists", withAuth(handlers.HandleGetLists))
+	router.GET("/lists/:id", withAuth(handlers.HandleGetList))
+	router.PUT("/lists/:id", withAuth(handlers.HandleUpdateList))
+	router.DELETE("/lists/:id", withAuth(handlers.HandleDeleteList))
+	router.POST("/lists/:id/items", withAuth(handlers.HandleAddListItem))
+	router.PUT("/lists/:id/items", withAuth(handlers.HandleUpdateListItem))
+	router.DELETE("/lists/:id/items", withAuth(handlers.HandleDeleteListItem))
+	router.PUT("/lists/:id/items/checked", withAuth(handlers.HandleUpdateListItemChecked))
 
 	// Get port from environment or default to 8080
 	port := os.Getenv("PORT")
@@ -90,7 +87,12 @@ func main() {
 	}
 
 	fmt.Printf("Server starting on port %s\n", port)
-	if err := router.Run(":" + port); err != nil {
+	if err := http.ListenAndServe(":"+port, router); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
+}
+
+// withAuth wraps a handler with JWT authentication middleware
+func withAuth(handler http.HandlerFunc) http.HandlerFunc {
+	return middleware.JWTAuth(handler)
 }
