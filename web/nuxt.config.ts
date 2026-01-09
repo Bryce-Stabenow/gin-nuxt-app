@@ -3,6 +3,13 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   modules: ['@nuxtjs/tailwindcss', '@nuxt/icon', '@vite-pwa/nuxt'],
+  icon: {
+    provider: 'none',
+    serverBundle: 'local',
+    clientBundle: {
+            scan: true,
+    }
+  },
   runtimeConfig: {
     public: {
       apiUrl: process.env.NUXT_PUBLIC_API_URL || 'http://localhost:8080'
